@@ -362,8 +362,17 @@
                     case 'employeeDetails':
                         app.innerHTML = this.renderEmployeeDetails();
                         break;
-                    case 'inventory':
-                        app.innerHTML = this.renderInventory();
+                    case 'employees':
+                        app.innerHTML = this.renderEmployeesList();
+                        break;
+                    case 'transactions':
+                        app.innerHTML = this.renderTransactionsList();
+                        break;
+                    case 'pendingSignatures':
+                        app.innerHTML = this.renderPendingSignatures();
+                        break;
+                    case 'lowStock':
+                        app.innerHTML = this.renderLowStock();
                         break;
                 }
             }
@@ -404,7 +413,8 @@
                         <div class="max-w-7xl mx-auto p-6">
                             <!-- Statistiques avec animation -->
                             <div class="grid md:grid-cols-4 gap-6 mb-8 animate-fade-in">
-                                <div class="stat-card rounded-xl shadow-lg p-6 hover-lift">
+                                <div onclick="app.currentView='employees'; app.render()" 
+                                    class="stat-card rounded-xl shadow-lg p-6 hover-lift cursor-pointer">
                                     <div class="flex items-center justify-between mb-2">
                                         <div class="p-3 bg-blue-100 rounded-lg">
                                             <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -416,7 +426,8 @@
                                     <p class="text-sm text-gray-600">Employés actifs</p>
                                 </div>
 
-                                <div class="stat-card rounded-xl shadow-lg p-6 hover-lift">
+                                <div onclick="app.currentView='transactions'; app.render()" 
+                                    class="stat-card rounded-xl shadow-lg p-6 hover-lift cursor-pointer">
                                     <div class="flex items-center justify-between mb-2">
                                         <div class="p-3 bg-green-100 rounded-lg">
                                             <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -428,7 +439,8 @@
                                     <p class="text-sm text-gray-600">Transactions totales</p>
                                 </div>
 
-                                <div class="stat-card rounded-xl shadow-lg p-6 hover-lift">
+                                <div onclick="app.currentView='pendingSignatures'; app.render()" 
+                                    class="stat-card rounded-xl shadow-lg p-6 hover-lift cursor-pointer">
                                     <div class="flex items-center justify-between mb-2">
                                         <div class="p-3 bg-orange-100 rounded-lg">
                                             <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -440,7 +452,8 @@
                                     <p class="text-sm text-gray-600">En attente signature</p>
                                 </div>
 
-                                <div class="stat-card rounded-xl shadow-lg p-6 hover-lift">
+                                <div onclick="app.currentView='lowStock'; app.render()" 
+                                    class="stat-card rounded-xl shadow-lg p-6 hover-lift cursor-pointer">
                                     <div class="flex items-center justify-between mb-2">
                                         <div class="p-3 bg-red-100 rounded-lg">
                                             <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -527,15 +540,31 @@
                                 </button>
                             </div>
 
-                            <!-- Footer avec bouton de sauvegarde -->
+                            <!-- Footer avec boutons de téléchargement -->
                             <div class="mt-12 text-center animate-fade-in" style="animation-delay: 0.5s">
-                                <button onclick="app.db.exportData()" 
-                                    class="text-sm text-white/80 hover:text-white transition-colors bg-white/10 backdrop-blur px-6 py-2 rounded-full">
-                                    <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
-                                    </svg>
-                                    Télécharger une sauvegarde
-                                </button>
+                                <div class="flex flex-wrap gap-4 justify-center">
+                                    <button onclick="app.downloadEmployeeReport()" 
+                                        class="text-sm text-white/80 hover:text-white transition-colors bg-white/10 backdrop-blur px-6 py-2 rounded-full">
+                                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        Rapport "Qui a quoi" (CSV)
+                                    </button>
+                                    <button onclick="app.downloadInventoryReport()" 
+                                        class="text-sm text-white/80 hover:text-white transition-colors bg-white/10 backdrop-blur px-6 py-2 rounded-full">
+                                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        Inventaire complet (CSV)
+                                    </button>
+                                    <button onclick="app.db.exportData()" 
+                                        class="text-sm text-white/80 hover:text-white transition-colors bg-white/10 backdrop-blur px-6 py-2 rounded-full">
+                                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                                        </svg>
+                                        Sauvegarde complète (JSON)
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
