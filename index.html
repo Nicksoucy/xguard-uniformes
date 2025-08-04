@@ -1,4 +1,4 @@
-renderError(title, message) {
+            renderError(title, message) {
                 return `
                     <div class="min-h-screen flex items-center justify-center p-4 gradient-bg">
                         <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center animate-fade-in">
@@ -18,6 +18,7 @@ renderError(title, message) {
 
             renderEmployeesList() {
                 const employees = this.db.data.employees.filter(e => e.active);
+                const inactiveEmployees = this.db.data.employees.filter(e => !e.active);
                 
                 return `
                     <div class="min-h-screen gradient-bg">
@@ -35,9 +36,25 @@ renderError(title, message) {
                         </div>
 
                         <div class="max-w-6xl mx-auto p-6">
+                            <!-- Onglets actifs/inactifs -->
                             <div class="bg-white rounded-xl shadow-lg p-6 mb-4">
                                 <div class="flex justify-between items-center mb-4">
-                                    <p class="text-lg font-semibold">Total: ${employees.length} employés actifs</p>
+                                    <div class="flex gap-4">
+                                        <button onclick="app.showInactive = false; app.render()" 
+                                            class="px-4 py-2 rounded-lg transition ${!this.showInactive ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            Actifs (${employees.length})
+                                        </button>
+                                        <button onclick="app.showInactive = true; app.render()" 
+                                            class="px-4 py-2 rounded-lg transition ${this.showInactive ? 'bg-gray-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            Inactifs (${inactiveEmployees.length})
+                                        </button>
+                                    </div>
                                     <button onclick="app.downloadEmployeeReport()" 
                                         class="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-green-700 transition">
                                         <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,23 +66,24 @@ renderError(title, message) {
                             </div>
 
                             <div class="grid md:grid-cols-2 gap-6">
-                                ${employees.map(emp => {
+                                ${(this.showInactive ? inactiveEmployees : employees).map(emp => {
                                     const balance = this.db.getEmployeeBalance(emp.id);
                                     const totalItems = balance.reduce((sum, item) => sum + item.quantity, 0);
                                     const totalValue = balance.reduce((sum, item) => sum + (item.quantity * item.price), 0);
                                     
                                     return `
-                                        <div class="bg-white rounded-xl shadow-lg p-6 hover-lift animate-fade-in">
+                                        <div class="bg-white rounded-xl shadow-lg p-6 hover-lift animate-fade-in ${!emp.active ? 'opacity-75' : ''}">
                                             <div class="flex justify-between items-start mb-4">
                                                 <div>
-                                                    <h3 class="font-semibold text-lg">${emp.name}</h3>
+                                                    <h3 class="font-semibold text-lg ${!emp.active ? 'text-gray-500' : ''}">${emp.name}</h3>
                                                     <p class="text-sm text-gray-600">${emp.id} • ${emp.phone}</p>
                                                     ${emp.email ? `<p class="text-sm text-gray-600">${emp.email}</p>` : ''}
+                                                    ${!emp.active ? '<span class="inline-block mt-2 px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs">Inactif</span>' : ''}
                                                 </div>
                                                 <div class="text-right">
-                                                    <p class="text-2xl font-bold text-gray-800">${totalItems}</p>
+                                                    <p class="text-2xl font-bold ${!emp.active ? 'text-gray-500' : 'text-gray-800'}">${totalItems}</p>
                                                     <p class="text-sm text-gray-500">articles</p>
-                                                    <p class="text-sm font-semibold text-green-600">$${totalValue}</p>
+                                                    <p class="text-sm font-semibold ${!emp.active ? 'text-gray-500' : 'text-green-600'}">${totalValue}</p>
                                                 </div>
                                             </div>
                                             ${balance.length > 0 ? `
@@ -75,7 +93,7 @@ renderError(title, message) {
                                                         ${balance.map(item => 
                                                             `<div class="flex justify-between bg-gray-50 rounded px-2 py-1">
                                                                 <span>${item.quantity}× ${item.name} (${item.size})</span>
-                                                                <span class="text-gray-600">$${item.price * item.quantity}</span>
+                                                                <span class="text-gray-600">${item.price * item.quantity}</span>
                                                             </div>`
                                                         ).join('')}
                                                     </div>
@@ -86,10 +104,17 @@ renderError(title, message) {
                                                     class="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition text-sm">
                                                     Voir détails
                                                 </button>
-                                                <button onclick="app.startTransactionForEmployee('attribution', '${emp.id}')" 
-                                                    class="flex-1 bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 transition text-sm">
-                                                    Attribuer
-                                                </button>
+                                                ${emp.active ? `
+                                                    <button onclick="app.startTransactionForEmployee('attribution', '${emp.id}')" 
+                                                        class="flex-1 bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 transition text-sm">
+                                                        Attribuer
+                                                    </button>
+                                                ` : `
+                                                    <button onclick="app.reactivateEmployee('${emp.id}')" 
+                                                        class="flex-1 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition text-sm">
+                                                        Réactiver
+                                                    </button>
+                                                `}
                                             </div>
                                         </div>
                                     `;
@@ -394,27 +419,57 @@ renderError(title, message) {
                                         <p class="text-gray-600">${employee.phone}</p>
                                         ${employee.email ? `<p class="text-gray-600">${employee.email}</p>` : ''}
                                         ${employee.notes ? `<p class="text-sm text-gray-500 mt-2 italic">${employee.notes}</p>` : ''}
+                                        ${!employee.active ? '<span class="inline-block mt-2 px-3 py-1 bg-gray-200 text-gray-700 rounded">Employé inactif</span>' : ''}
                                     </div>
                                     <div class="text-right">
                                         <p class="text-sm text-gray-500">Valeur totale</p>
-                                        <p class="text-3xl font-bold text-green-600">$${totalValue}</p>
+                                        <p class="text-3xl font-bold text-green-600">${totalValue}</p>
                                         <p class="text-sm text-gray-500 mt-2">${balance.length} articles</p>
                                     </div>
                                 </div>
                                 <div class="mt-4 flex gap-2">
-                                    <button onclick="app.startTransactionForEmployee('attribution', '${employee.id}')" 
-                                        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
-                                        Attribution
-                                    </button>
-                                    <button onclick="app.startTransactionForEmployee('retour', '${employee.id}')" 
-                                        class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">
-                                        Retour
-                                    </button>
-                                    <button onclick="app.startTransactionForEmployee('ajout', '${employee.id}')" 
-                                        class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition">
-                                        Ajout
-                                    </button>
+                                    ${employee.active ? `
+                                        <button onclick="app.startTransactionForEmployee('attribution', '${employee.id}')" 
+                                            class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                                            Attribution
+                                        </button>
+                                        <button onclick="app.startTransactionForEmployee('retour', '${employee.id}')" 
+                                            class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">
+                                            Retour
+                                        </button>
+                                        <button onclick="app.startTransactionForEmployee('ajout', '${employee.id}')" 
+                                            class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition">
+                                            Ajout
+                                        </button>
+                                        ${balance.length === 0 ? `
+                                            <button onclick="app.deactivateEmployee('${employee.id}')" 
+                                                class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition ml-auto">
+                                                <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                                                </svg>
+                                                Désactiver l'employé
+                                            </button>
+                                        ` : ''}
+                                    ` : `
+                                        <button onclick="app.reactivateEmployee('${employee.id}')" 
+                                            class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">
+                                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            Réactiver l'employé
+                                        </button>
+                                    `}
                                 </div>
+                                ${employee.active && balance.length > 0 ? `
+                                    <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                        <p class="text-sm text-yellow-800">
+                                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                            </svg>
+                                            L'employé doit retourner tous ses articles avant d'être désactivé
+                                        </p>
+                                    </div>
+                                ` : ''}
                             </div>
 
                             <!-- Inventaire actuel -->
@@ -431,10 +486,10 @@ renderError(title, message) {
                                                     </div>
                                                     <div class="text-right">
                                                         <span class="text-lg font-bold">${item.quantity}</span>
-                                                        <span class="text-sm text-gray-600 ml-1">× $${item.price}</span>
+                                                        <span class="text-sm text-gray-600 ml-1">× ${item.price}</span>
                                                     </div>
                                                 </div>
-                                                <p class="text-sm text-green-600 font-semibold mt-1">$${item.quantity * item.price}</p>
+                                                <p class="text-sm text-green-600 font-semibold mt-1">${item.quantity * item.price}</p>
                                             </div>
                                         `).join('')}
                                     </div>
@@ -474,7 +529,7 @@ renderError(title, message) {
                                                         `).join('')}
                                                     </div>
                                                     <p class="text-right font-semibold ${t.type === 'retour' ? 'text-green-600' : ''}">
-                                                        ${t.type === 'retour' ? '-' : '+'}$${total}
+                                                        ${t.type === 'retour' ? '-' : '+'}${total}
                                                     </p>
                                                     ${t.notes ? `<p class="text-sm text-gray-600 mt-2 italic">Note: ${t.notes}</p>` : ''}
                                                 </div>
