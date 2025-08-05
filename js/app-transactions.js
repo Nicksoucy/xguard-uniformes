@@ -1,11 +1,10 @@
-// ==================== GESTION DES TRANSACTIONS ====================
+// ==================== MODULE TRANSACTIONS ====================
 
 // Rendu de la page de transaction
 export function renderTransaction() {
     const employee = this.db.getEmployee(this.currentEmployee);
     if (!employee) {
-        this.currentView = 'selectEmployee';
-        this.render();
+        this.navigateTo('selectEmployee');
         return '';
     }
     
@@ -45,8 +44,8 @@ export function renderTransaction() {
                             </h2>
                             
                             ${this.transactionType === 'retour' ? 
-                                renderReturnItems(this, balance) : 
-                                renderInventorySelection(this)}
+                                renderReturnItems.call(this, balance) : 
+                                renderInventorySelection.call(this)}
                         </div>
                     </div>
 
@@ -115,7 +114,7 @@ export function renderTransaction() {
 }
 
 // Rendu des articles pour retour
-function renderReturnItems(app, balance) {
+function renderReturnItems(balance) {
     if (balance.length === 0) {
         return '<p class="text-gray-500 text-center py-8">Aucun article en possession</p>';
     }
@@ -146,10 +145,10 @@ function renderReturnItems(app, balance) {
 }
 
 // Rendu de la sélection d'inventaire
-function renderInventorySelection(app) {
+function renderInventorySelection() {
     return `
         <div class="space-y-4 max-h-96 overflow-y-auto">
-            ${app.db.data.inventory.map(item => `
+            ${this.db.data.inventory.map(item => `
                 <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="font-medium">${item.name}</h3>
@@ -205,7 +204,7 @@ export function renderTransactionsList() {
                 </div>
 
                 <div class="space-y-4">
-                    ${transactions.map(t => renderTransactionCard(this, t)).join('')}
+                    ${transactions.map(t => renderTransactionCard.call(this, t)).join('')}
                 </div>
             </div>
         </div>
@@ -213,8 +212,8 @@ export function renderTransactionsList() {
 }
 
 // Rendu d'une carte de transaction
-function renderTransactionCard(app, transaction) {
-    const employee = app.db.getEmployee(transaction.employeeId);
+function renderTransactionCard(transaction) {
+    const employee = this.db.getEmployee(transaction.employeeId);
     const total = transaction.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     
     let typeClasses = '';
@@ -267,6 +266,25 @@ function renderTransactionCard(app, transaction) {
                     `).join('')}
                 </div>
                 ${transaction.notes ? `<p class="text-sm text-gray-600 mt-2 italic">Note: ${transaction.notes}</p>` : ''}
+                ${transaction.signed ? `
+                    <div class="mt-3 flex gap-2">
+                        <button onclick="app.viewTransactionDetails('${transaction.id}')" 
+                            class="flex-1 text-sm bg-blue-100 text-blue-700 px-4 py-2 rounded hover:bg-blue-200 transition">
+                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                            Voir détails
+                        </button>
+                        <button onclick="app.printTransaction('${transaction.id}')" 
+                            class="flex-1 text-sm bg-green-100 text-green-700 px-4 py-2 rounded hover:bg-green-200 transition">
+                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                            </svg>
+                            Imprimer
+                        </button>
+                    </div>
+                ` : ''}
             </div>
         </div>
     `;
@@ -298,7 +316,7 @@ export function renderPendingSignatures() {
             <div class="max-w-6xl mx-auto p-6">
                 ${pendingTransactions.length === 0 ? 
                     renderNoSignatures() : 
-                    renderPendingList(this, pendingTransactions)}
+                    renderPendingList.call(this, pendingTransactions)}
             </div>
         </div>
     `;
@@ -320,7 +338,7 @@ function renderNoSignatures() {
 }
 
 // Rendu de la liste des signatures en attente
-function renderPendingList(app, pendingTransactions) {
+function renderPendingList(pendingTransactions) {
     return `
         <div class="bg-white rounded-xl shadow-lg p-6 mb-4">
             <p class="text-lg font-semibold text-orange-600">${pendingTransactions.length} signatures en attente</p>
@@ -328,7 +346,7 @@ function renderPendingList(app, pendingTransactions) {
 
         <div class="space-y-4">
             ${pendingTransactions.map(({ link, transaction }) => {
-                const employee = app.db.getEmployee(transaction.employeeId);
+                const employee = this.db.getEmployee(transaction.employeeId);
                 const total = transaction.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
                 const linkUrl = `${window.location.origin}${window.location.pathname}?token=${link.token}`;
                 const daysAgo = Math.floor((new Date() - new Date(transaction.createdAt)) / (1000 * 60 * 60 * 24));
@@ -469,177 +487,6 @@ export function renderSignature() {
     `;
 }
 
-// Rendu du succès de signature
-export function renderSuccessSignature(transaction) {
-    const employee = this.db.getEmployee(transaction.employeeId);
-    
-    return `
-        <div class="min-h-screen flex items-center justify-center p-4 gradient-bg">
-            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center animate-fade-in">
-                <div class="mb-6">
-                    <div class="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto animate-pulse">
-                        <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </div>
-                </div>
-                <h2 class="text-3xl font-bold text-gray-800 mb-4">Signature confirmée!</h2>
-                <div class="bg-gray-50 rounded-xl p-6 mb-6 text-left">
-                    <p class="text-sm mb-2"><span class="text-gray-600">Employé:</span> <span class="font-medium">${employee ? employee.name : 'Inconnu'}</span></p>
-                    <p class="text-sm mb-2"><span class="text-gray-600">Code:</span> <span class="font-medium">${employee ? employee.id : 'N/A'}</span></p>
-                    <p class="text-sm mb-2"><span class="text-gray-600">Articles:</span> <span class="font-medium">${transaction.items.length}</span></p>
-                    <p class="text-sm"><span class="text-gray-600">Date:</span> <span class="font-medium">${new Date().toLocaleString('fr-CA')}</span></p>
-                </div>
-                <p class="text-gray-600 mb-6">La transaction a été enregistrée avec succès.</p>
-                
-                <button onclick="window.location.href=window.location.pathname" 
-                    class="w-full bg-gray-200 text-gray-700 py-3 rounded-xl hover:bg-gray-300 transition font-medium">
-                    Fermer
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-// Validation de transaction
-export function validateTransaction() {
-    if (this.selection.length === 0) {
-        alert('Veuillez sélectionner au moins un article');
-        return;
-    }
-
-    const notes = document.getElementById('transaction-notes')?.value || '';
-    
-    // Créer la transaction
-    const transaction = this.db.createTransaction(
-        this.transactionType,
-        this.currentEmployee,
-        this.selection,
-        notes
-    );
-
-    if (this.transactionType === 'retour') {
-        // Pour un retour, pas besoin de signature
-        alert('Retour enregistré avec succès!');
-        this.navigateTo('home');
-    } else {
-        // Pour attribution/ajout, afficher le lien
-        const employee = this.db.getEmployee(this.currentEmployee);
-        const linkUrl = `${window.location.origin}${window.location.pathname}?token=${transaction.linkToken}`;
-        
-        // Créer le modal moderne
-        showTransactionModal(this, employee, linkUrl);
-    }
-}
-
-// Modal de confirmation de transaction
-function showTransactionModal(app, employee, linkUrl) {
-    const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in';
-    modal.innerHTML = `
-        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full animate-fade-in">
-            <div class="text-center mb-6">
-                <div class="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                </div>
-                <h3 class="text-2xl font-bold text-gray-800 mb-2">Lien généré avec succès!</h3>
-                <p class="text-gray-600">Envoyez ce lien à ${employee.name}</p>
-            </div>
-            
-            <div class="bg-gray-50 rounded-xl p-4 mb-6">
-                <p class="text-sm text-gray-600 mb-3">Lien de signature:</p>
-                <div class="flex items-center gap-2">
-                    <input type="text" value="${linkUrl}" readonly 
-                        class="flex-1 px-3 py-2 bg-white border rounded-lg text-sm" id="modal-link-input">
-                    <button onclick="app.copyLink('${linkUrl}')" 
-                        class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition">
-                        Copier
-                    </button>
-                </div>
-            </div>
-            
-            <div class="bg-blue-50 rounded-xl p-4 mb-6">
-                <p class="text-sm font-semibold mb-2">Message SMS suggéré:</p>
-                <textarea readonly rows="6" class="w-full p-3 bg-white rounded-lg text-xs border">Bonjour ${employee.name},
-
-Vos uniformes XGuard sont prêts. Veuillez confirmer la réception en signant sur ce lien:
-
-${linkUrl}
-
-Merci,
-XGuard Réception</textarea>
-            </div>
-            
-            <button onclick="app.closeModal(); app.navigateTo('home');" 
-                class="w-full bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition font-medium">
-                Fermer et terminer
-            </button>
-        </div>
-    `;
-    document.body.appendChild(modal);
-}
-
-// Event handlers pour les signatures
-export function attachSignatureEvents() {
-    const canvas = document.getElementById('signature-pad');
-    if (!canvas) return;
-
-    const signaturePad = new SignaturePad(canvas, {
-        backgroundColor: 'rgb(255, 255, 255)',
-        penColor: 'rgb(0, 0, 0)'
-    });
-
-    // Redimensionner
-    function resizeCanvas() {
-        const ratio = Math.max(window.devicePixelRatio || 1, 1);
-        canvas.width = canvas.offsetWidth * ratio;
-        canvas.height = canvas.offsetHeight * ratio;
-        canvas.getContext("2d").scale(ratio, ratio);
-        signaturePad.clear();
-    }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    // Boutons
-    const clearBtn = document.getElementById('clear-signature');
-    if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            signaturePad.clear();
-        });
-    }
-
-    const submitBtn = document.getElementById('submit-signature');
-    if (submitBtn) {
-        submitBtn.addEventListener('click', () => {
-            if (signaturePad.isEmpty()) {
-                alert('Veuillez signer avant de soumettre');
-                return;
-            }
-
-            const signature = {
-                data: signaturePad.toDataURL(),
-                timestamp: new Date().toISOString()
-            };
-
-            const transaction = this.db.signTransaction(this.currentToken, signature);
-            
-            if (transaction) {
-                document.getElementById('app').innerHTML = this.renderSuccessSignature(transaction);
-            } else {
-                alert('Erreur lors de la signature. Le lien a peut-être déjà été utilisé.');
-            }
-        });
-    }
-}
-
-// Event handler pour les transactions
-export function attachTransactionEvents() {
-    // Les events sont généralement inline dans le HTML
-    // Cette fonction peut être utilisée pour des événements additionnels si nécessaire
-}
-
 // Fonction utilitaire pour les erreurs
 function renderError(title, message) {
     return `
@@ -658,15 +505,3 @@ function renderError(title, message) {
         </div>
     `;
 }
-
-// Exports finaux
-export {
-    renderTransaction,
-    renderTransactionsList,
-    renderPendingSignatures,
-    renderSignature,
-    renderSuccessSignature,
-    validateTransaction,
-    attachSignatureEvents,
-    attachTransactionEvents
-};
