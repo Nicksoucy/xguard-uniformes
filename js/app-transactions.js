@@ -704,3 +704,13 @@ export function attachTransactionEvents(app) {
     // Les events sont généralement inline dans le HTML
     // Cette fonction peut être utilisée pour des événements additionnels si nécessaire
 }
+// À la toute fin de app-transactions.js, ajoutez :
+export {
+    renderTransaction,
+    renderTransactionsList,
+    renderPendingSignatures,
+    renderSignature,
+    validateTransaction,
+    attachSignatureEvents,
+    attachTransactionEvents
+};
