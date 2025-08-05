@@ -19,11 +19,46 @@ export class XGuardApp {
             this.currentView = 'signature';
         }
 
+        // Initialiser la gestion de l'historique
+        this.initNavigation();
+        
         this.render();
+    }
+
+    // Initialiser la navigation
+    initNavigation() {
+        // Ajouter l'état initial
+        window.history.replaceState(
+            { view: this.currentView, employee: this.currentEmployee },
+            '',
+            window.location.href
+        );
+        
+        // Écouter les changements d'historique
+        window.addEventListener('popstate', (event) => {
+            if (event.state) {
+                this.currentView = event.state.view || 'home';
+                this.currentEmployee = event.state.employee || null;
+                this.render();
+            }
+        });
     }
 
     render() {
         const app = document.getElementById('app');
+        
+        // Mettre à jour l'URL et l'historique
+        if (!window.history.state || window.history.state.view !== this.currentView) {
+            const url = this.currentView === 'signature' && this.currentToken 
+                ? `?token=${this.currentToken}` 
+                : window.location.pathname;
+                
+            window.history.pushState(
+                { view: this.currentView, employee: this.currentEmployee },
+                '',
+                url
+            );
+        }
         
         switch(this.currentView) {
             case 'home':
@@ -391,9 +426,7 @@ XGuard Réception</textarea>
         this.render();
     }
 
-    // ==================== NOUVELLES MÉTHODES POUR LA GESTION D'INVENTAIRE ====================
-    
-    // Afficher le modal d'achat
+    // Méthodes pour la gestion d'inventaire
     showPurchaseModal() {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
@@ -443,7 +476,6 @@ XGuard Réception</textarea>
         this.render();
     }
 
-    // Afficher le modal d'ajustement
     showAdjustmentModal() {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
@@ -505,7 +537,6 @@ XGuard Réception</textarea>
         this.render();
     }
 
-    // Ajustement rapide
     quickAdjust(itemName, size, price) {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
@@ -546,6 +577,169 @@ XGuard Réception</textarea>
         this.db.recordAdjustment(itemName, size, adjustmentQty, reason, '');
         this.closeQuickAdjustModal();
         this.render();
+    }
+
+    // ==================== NOUVELLES MÉTHODES POUR PDF ====================
+    
+    // Générer le PDF d'une transaction
+    generateTransactionPDF(transaction) {
+        const employee = this.db.getEmployee(transaction.employeeId);
+        if (!employee) return;
+
+        // Créer une nouvelle instance jsPDF
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // En-tête
+        doc.setFontSize(20);
+        doc.text('XGuard - Reçu d\'uniformes', 105, 20, { align: 'center' });
+        
+        // Ligne de séparation
+        doc.setLineWidth(0.5);
+        doc.line(20, 25, 190, 25);
+
+        // Informations de l'employé
+        doc.setFontSize(12);
+        doc.text('Informations de l\'employé:', 20, 35);
+        doc.setFontSize(10);
+        doc.text(`Nom: ${employee.name}`, 20, 45);
+        doc.text(`Code: ${employee.id}`, 20, 52);
+        doc.text(`Téléphone: ${employee.phone}`, 20, 59);
+        
+        // Date de transaction
+        doc.text(`Date: ${new Date(transaction.createdAt).toLocaleDateString('fr-CA')}`, 120, 45);
+        doc.text(`Type: ${this.getTransactionTypeText(transaction.type)}`, 120, 52);
+
+        // Articles
+        doc.setFontSize(12);
+        doc.text('Articles reçus:', 20, 75);
+        
+        let y = 85;
+        doc.setFontSize(10);
+        transaction.items.forEach(item => {
+            doc.text(`${item.quantity}x ${item.name} - Taille ${item.size} - $${item.price * item.quantity}`, 25, y);
+            y += 7;
+        });
+
+        // Total
+        const total = transaction.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        doc.setFontSize(12);
+        doc.text(`Total: $${total}`, 20, y + 10);
+
+        // Conditions
+        y += 25;
+        doc.setFontSize(10);
+        doc.text('CONDITIONS:', 20, y);
+        doc.setFontSize(8);
+        const conditions = [
+            '- Les uniformes restent la propriété de XGuard',
+            '- En cas de fin d\'emploi, les uniformes doivent être retournés dans les 5 jours',
+            `- Si non retournés, un montant de $${total} sera retenu sur la dernière paie`
+        ];
+        
+        conditions.forEach((condition, index) => {
+            doc.text(condition, 25, y + 10 + (index * 6));
+        });
+
+        // Signature si disponible
+        if (transaction.signature && transaction.signature.data) {
+            y += 40;
+            doc.text('Signature de l\'employé:', 20, y);
+            
+            // Ajouter l'image de la signature
+            try {
+                doc.addImage(transaction.signature.data, 'PNG', 20, y + 5, 60, 30);
+                doc.text(`Signé le: ${new Date(transaction.signature.signedAt).toLocaleString('fr-CA')}`, 20, y + 40);
+            } catch (e) {
+                console.error('Erreur lors de l\'ajout de la signature:', e);
+            }
+        }
+
+        // Pied de page
+        doc.setFontSize(8);
+        doc.text('Document généré automatiquement par XGuard', 105, 280, { align: 'center' });
+        doc.text(`ID Transaction: ${transaction.id}`, 105, 285, { align: 'center' });
+
+        return doc;
+    }
+
+    // Télécharger le PDF
+    downloadTransactionPDF(transactionId) {
+        const transaction = this.db.data.transactions.find(t => t.id === transactionId);
+        if (!transaction) return;
+
+        const doc = this.generateTransactionPDF(transaction);
+        const employee = this.db.getEmployee(transaction.employeeId);
+        
+        // Nom du fichier
+        const filename = `XGuard_${employee.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+        
+        // Télécharger
+        doc.save(filename);
+    }
+
+    // Afficher le PDF dans une nouvelle fenêtre
+    viewTransactionPDF(transactionId) {
+        const transaction = this.db.data.transactions.find(t => t.id === transactionId);
+        if (!transaction) return;
+
+        const doc = this.generateTransactionPDF(transaction);
+        
+        // Ouvrir dans une nouvelle fenêtre
+        const pdfDataUri = doc.output('datauristring');
+        const newWindow = window.open();
+        newWindow.document.write('<iframe width="100%" height="100%" src="' + pdfDataUri + '"></iframe>');
+    }
+
+    // Export de toutes les signatures
+    exportAllSignatures() {
+        const signedTransactions = this.db.getSignedTransactions();
+        
+        if (signedTransactions.length === 0) {
+            alert('Aucune transaction signée à exporter');
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(16);
+        doc.text('XGuard - Rapport des Signatures', 105, 20, { align: 'center' });
+        doc.setFontSize(10);
+        doc.text(`Généré le: ${new Date().toLocaleDateString('fr-CA')}`, 105, 30, { align: 'center' });
+        
+        let y = 45;
+        
+        signedTransactions.forEach((transaction, index) => {
+            if (y > 250) {
+                doc.addPage();
+                y = 20;
+            }
+            
+            const employee = this.db.getEmployee(transaction.employeeId);
+            const total = transaction.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            doc.setFontSize(12);
+            doc.text(`${index + 1}. ${employee ? employee.name : 'Employé supprimé'}`, 20, y);
+            doc.setFontSize(10);
+            doc.text(`Date: ${new Date(transaction.signedAt).toLocaleDateString('fr-CA')}`, 30, y + 7);
+            doc.text(`Montant: $${total}`, 30, y + 14);
+            doc.text(`ID: ${transaction.id}`, 30, y + 21);
+            
+            y += 30;
+        });
+        
+        doc.save(`XGuard_Signatures_${new Date().toISOString().split('T')[0]}.pdf`);
+    }
+
+    // Helper pour obtenir le texte du type de transaction
+    getTransactionTypeText(type) {
+        switch(type) {
+            case 'attribution': return 'Attribution';
+            case 'retour': return 'Retour';
+            case 'ajout': return 'Ajout';
+            default: return type;
+        }
     }
 
     // ==================== EVENT HANDLERS ====================
@@ -623,7 +817,9 @@ XGuard Réception</textarea>
 
                 const signature = {
                     data: signaturePad.toDataURL(),
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    ipAddress: 'N/A', // Vous pouvez obtenir l'IP réelle si nécessaire
+                    userAgent: navigator.userAgent
                 };
 
                 const transaction = this.db.signTransaction(this.currentToken, signature);
@@ -631,9 +827,9 @@ XGuard Réception</textarea>
                 if (transaction) {
                     const employee = this.db.getEmployee(transaction.employeeId);
                     
-                    // Afficher le succès avec animation
+                    // Utiliser la nouvelle méthode avec PDF
                     const app = document.getElementById('app');
-                    app.innerHTML = Components.renderSuccessMessage(employee, transaction);
+                    app.innerHTML = Components.renderSuccessMessageWithPDF.call(this, employee, transaction);
                 }
             });
         }
