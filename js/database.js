@@ -5,7 +5,8 @@ export class Database {
             employees: [],
             transactions: [],
             inventory: this.getDefaultInventory(),
-            links: []
+            links: [],
+            movements: [] // NOUVEAU: Pour l'historique des mouvements d'inventaire
         };
         this.initSampleData();
     }
@@ -187,6 +188,95 @@ export class Database {
         return Object.values(balance).filter(item => item.quantity > 0);
     }
 
+    // ==================== NOUVELLES MÉTHODES POUR LA GESTION D'INVENTAIRE ====================
+    
+    // Créer un mouvement d'inventaire
+    createInventoryMovement(type, item, size, quantity, details = {}) {
+        if (!this.data.movements) {
+            this.data.movements = [];
+        }
+
+        const movement = {
+            id: this.generateId(),
+            type, // 'purchase', 'adjustment', 'attribution', 'retour'
+            item,
+            size,
+            quantity,
+            date: new Date().toISOString(),
+            createdBy: 'Réceptionniste',
+            ...details
+        };
+
+        this.data.movements.push(movement);
+        
+        // Mettre à jour l'inventaire selon le type
+        const invItem = this.data.inventory.find(i => i.name === item);
+        if (invItem && invItem.sizes[size] !== undefined) {
+            if (type === 'purchase' || type === 'adjustment') {
+                invItem.sizes[size] = Math.max(0, invItem.sizes[size] + quantity);
+            }
+        }
+
+        this.save();
+        return movement;
+    }
+
+    // Enregistrer un achat
+    recordPurchase(item, size, quantity, cost, supplier, notes) {
+        return this.createInventoryMovement('purchase', item, size, quantity, {
+            cost,
+            supplier,
+            notes
+        });
+    }
+
+    // Enregistrer un ajustement
+    recordAdjustment(item, size, quantity, reason, notes) {
+        return this.createInventoryMovement('adjustment', item, size, quantity, {
+            reason,
+            notes
+        });
+    }
+
+    // Obtenir l'historique des mouvements
+    getInventoryMovements(limit = 50) {
+        if (!this.data.movements) {
+            this.data.movements = [];
+        }
+        return this.data.movements
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, limit);
+    }
+
+    // Obtenir l'historique d'un article spécifique
+    getItemHistory(itemName, size = null) {
+        if (!this.data.movements) return [];
+        
+        return this.data.movements
+            .filter(m => m.item === itemName && (!size || m.size === size))
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+
+    // Obtenir les articles en rupture ou stock faible
+    getLowStockItems(threshold = 10) {
+        const lowStock = [];
+        this.data.inventory.forEach(item => {
+            Object.entries(item.sizes).forEach(([size, qty]) => {
+                if (qty < threshold) {
+                    lowStock.push({
+                        item: item.name,
+                        size,
+                        quantity: qty,
+                        price: item.price
+                    });
+                }
+            });
+        });
+        return lowStock;
+    }
+
+    // ==================== MÉTHODES UTILITAIRES ====================
+    
     generateEmployeeId() {
         const lastEmployee = this.data.employees
             .filter(e => e.id.startsWith('EMP'))
