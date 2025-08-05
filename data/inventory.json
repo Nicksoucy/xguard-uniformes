@@ -1,1 +1,139 @@
-
+[
+  {
+    "id": 1,
+    "name": "Chemise ML",
+    "sizes": {
+      "S": 50,
+      "M": 100,
+      "L": 75,
+      "XL": 40,
+      "XXL": 20,
+      "3XL": 10
+    },
+    "price": 30
+  },
+  {
+    "id": 2,
+    "name": "Chemise MC",
+    "sizes": {
+      "S": 60,
+      "M": 120,
+      "L": 80,
+      "XL": 45,
+      "XXL": 25,
+      "3XL": 10
+    },
+    "price": 30
+  },
+  {
+    "id": 3,
+    "name": "Col rond",
+    "sizes": {
+      "S": 40,
+      "M": 80,
+      "L": 60,
+      "XL": 30,
+      "XXL": 15
+    },
+    "price": 20
+  },
+  {
+    "id": 4,
+    "name": "Polo",
+    "sizes": {
+      "S": 40,
+      "M": 80,
+      "L": 60,
+      "XL": 30,
+      "XXL": 15
+    },
+    "price": 15
+  },
+  {
+    "id": 5,
+    "name": "Tuque",
+    "sizes": {
+      "Unique": 60
+    },
+    "price": 8
+  },
+  {
+    "id": 6,
+    "name": "Casquette",
+    "sizes": {
+      "Unique": 80
+    },
+    "price": 8
+  },
+  {
+    "id": 7,
+    "name": "Ceinture",
+    "sizes": {
+      "Unique": 100
+    },
+    "price": 10
+  },
+  {
+    "id": 8,
+    "name": "Pantalon",
+    "sizes": {
+      "S": 30,
+      "M": 70,
+      "L": 50,
+      "XL": 25,
+      "XXL": 10,
+      "3XL": 5
+    },
+    "price": 27
+  },
+  {
+    "id": 9,
+    "name": "Coupe-vent",
+    "sizes": {
+      "S": 25,
+      "M": 50,
+      "L": 40,
+      "XL": 20,
+      "XXL": 15
+    },
+    "price": 50
+  },
+  {
+    "id": 10,
+    "name": "Manteau 3 en 1",
+    "sizes": {
+      "S": 20,
+      "M": 40,
+      "L": 30,
+      "XL": 15,
+      "XXL": 10
+    },
+    "price": 150
+  },
+  {
+    "id": 11,
+    "name": "Dossard",
+    "sizes": {
+      "M": 50,
+      "L": 50,
+      "XL": 50
+    },
+    "price": 15
+  },
+  {
+    "id": 12,
+    "name": "Casque-chantier",
+    "sizes": {
+      "Unique": 40
+    },
+    "price": 25
+  },
+  {
+    "id": 13,
+    "name": "Épaulettes",
+    "sizes": {
+      "Unique": 100
+    },
+    "price": 5
+  }
+]
