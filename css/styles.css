@@ -1,4 +1,4 @@
-/* Animations et styles modernes */
+/* ==================== ANIMATIONS ==================== */
 @keyframes fadeIn {
     from { 
         opacity: 0; 
@@ -28,7 +28,16 @@
     }
 }
 
-/* Classes d'animation */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ==================== CLASSES D'ANIMATION ==================== */
 .animate-fade-in {
     animation: fadeIn 0.6s ease-out;
 }
@@ -41,7 +50,11 @@
     animation: pulse 2s infinite;
 }
 
-/* Arrière-plans et effets */
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* ==================== STYLES GLOBAUX ==================== */
 .gradient-bg {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
@@ -59,7 +72,7 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Signature Pad */
+/* ==================== COMPOSANTS ==================== */
 .signature-pad {
     border: 2px solid #e5e7eb;
     border-radius: 8px;
@@ -67,18 +80,15 @@
     touch-action: none;
 }
 
-/* Effets de survol */
 .hover-lift {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hover-lift:hover {
     transform: translateY(-8px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 
-                0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-/* Cartes de statistiques */
 .stat-card {
     background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%);
     transition: all 0.3s ease;
@@ -89,7 +99,7 @@
     box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.2);
 }
 
-/* Scrollbar personnalisée */
+/* ==================== SCROLLBAR PERSONNALISÉE ==================== */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -109,16 +119,260 @@
     background: #555;
 }
 
-/* Styles d'impression */
+/* ==================== GESTION D'INVENTAIRE ==================== */
+.inventory-adjust-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.inventory-adjust-btn:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.inventory-edit-mode {
+    background-color: #fef3c7;
+    border: 2px solid #fbbf24;
+}
+
+.add-item-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.add-item-btn:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+/* ==================== NOTIFICATIONS ==================== */
+.notification {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    z-index: 50;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.notification-success {
+    background-color: #10b981;
+    color: white;
+}
+
+.notification-error {
+    background-color: #ef4444;
+    color: white;
+}
+
+.notification-info {
+    background-color: #3b82f6;
+    color: white;
+}
+
+/* ==================== BOUTONS ==================== */
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 500;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary {
+    background-color: #e5e7eb;
+    color: #374151;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background-color: #d1d5db;
+}
+
+/* ==================== FORMULAIRES ==================== */
+.form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #667eea;
+    ring: 2px;
+    ring-color: rgba(102, 126, 234, 0.1);
+}
+
+/* ==================== MODALS ==================== */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 50;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+    background-color: white;
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    max-width: 32rem;
+    width: 100%;
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* ==================== BADGES ==================== */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.badge-blue {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-green {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.badge-yellow {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.badge-red {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* ==================== TABLEAUX ==================== */
+.table-hover tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.table-striped tbody tr:nth-child(odd) {
+    background-color: #f9fafb;
+}
+
+/* ==================== IMPRESSION ==================== */
 @media print {
     .no-print { 
         display: none !important; 
     }
+    
     .print-only { 
         display: block !important; 
+    }
+    
+    .gradient-bg {
+        background: white !important;
+    }
+    
+    .glass-effect {
+        background: white !important;
+        border: 1px solid #e5e7eb !important;
+    }
+    
+    .hover-lift:hover {
+        transform: none !important;
+        box-shadow: none !important;
     }
 }
 
 .print-only { 
     display: none; 
+}
+
+/* ==================== ÉTATS SPÉCIAUX ==================== */
+.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1rem;
+    height: 1rem;
+    margin-left: -0.5rem;
+    margin-top: -0.5rem;
+    border: 2px solid #ffffff;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* ==================== UTILITAIRES ==================== */
+.text-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.shadow-soft {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-strong {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+    .stat-card {
+        padding: 1rem;
+    }
+    
+    .modal-content {
+        margin: 1rem;
+    }
+    
+    .inventory-adjust-btn {
+        padding: 0.5rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* ==================== TRANSITIONS GLOBALES ==================== */
+* {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
