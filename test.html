@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test XGuard</title>
+</head>
+<body>
+    <h1>Test de base</h1>
+    <div id="test"></div>
+    <script>
+        console.log('✅ JavaScript fonctionne');
+        document.getElementById('test').innerHTML = '✅ DOM fonctionne';
+        
+        // Test d'import des modules
+        import('./js/database.js').then(() => {
+            console.log('✅ database.js chargé');
+        }).catch(err => {
+            console.error('❌ Erreur database.js:', err);
+        });
+    </script>
+</body>
+</html>
