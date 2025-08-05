@@ -5,24 +5,224 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XGuard - Système de Gestion des Uniformes</title>
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'><text x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-size='16' font-weight='bold'>X</text></svg>">
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Signature Pad -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     
+    <!-- jsPDF pour générer les PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- html2canvas pour capturer le contenu (optionnel, mais utile pour les PDFs complexes) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
     <!-- Styles personnalisés -->
     <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Configuration Tailwind pour les animations personnalisées -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'fade-in': 'fadeIn 0.6s ease-out',
+                        'slide-in': 'slideIn 0.4s ease-out',
+                        'pulse': 'pulse 2s infinite'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Meta tags pour PWA -->
+    <meta name="theme-color" content="#6366f1">
+    <meta name="description" content="Système de gestion des uniformes pour XGuard - Attribution, retour et suivi des équipements">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="XGuard - Gestion des Uniformes">
+    <meta property="og:description" content="Système complet de gestion des uniformes et équipements">
+    <meta property="og:type" content="website">
+    
+    <!-- Styles inline pour les éléments critiques -->
+    <style>
+        /* Préchargement des styles critiques */
+        #app {
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        /* Loader de démarrage */
+        .app-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease-out;
+        }
+        
+        .app-loader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loader-content {
+            text-align: center;
+            color: white;
+        }
+        
+        .loader-logo {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        /* Empêcher le défilement pendant le chargement */
+        body.loading {
+            overflow: hidden;
+        }
+    </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 loading">
+    <!-- Loader de démarrage -->
+    <div class="app-loader" id="appLoader">
+        <div class="loader-content">
+            <div class="loader-logo">
+                <span class="text-4xl font-bold bg-gradient-to-br from-purple-600 to-purple-800 bg-clip-text text-transparent">X</span>
+            </div>
+            <h1 class="text-2xl font-bold mb-2">XGuard</h1>
+            <p class="text-purple-200">Chargement en cours...</p>
+        </div>
+    </div>
+    
+    <!-- Conteneur principal de l'application -->
     <div id="app"></div>
+    
+    <!-- Notification de mise à jour (PWA) -->
+    <div id="updateNotification" class="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 hidden max-w-sm">
+        <h3 class="font-bold text-gray-800 mb-2">Mise à jour disponible</h3>
+        <p class="text-sm text-gray-600 mb-3">Une nouvelle version de l'application est disponible.</p>
+        <div class="flex gap-2">
+            <button onclick="window.location.reload()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition text-sm">
+                Mettre à jour
+            </button>
+            <button onclick="document.getElementById('updateNotification').classList.add('hidden')" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition text-sm">
+                Plus tard
+            </button>
+        </div>
+    </div>
     
     <!-- Scripts de l'application -->
     <script type="module">
         import { XGuardApp } from './js/app.js';
         
+        // Masquer le loader après le chargement
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('appLoader');
+                loader.classList.add('hidden');
+                document.body.classList.remove('loading');
+                
+                // Initialiser l'application après la transition
+                setTimeout(() => {
+                    loader.remove();
+                }, 300);
+            }, 500);
+        });
+        
         // Initialiser l'application
         window.app = new XGuardApp();
+        
+        // Gérer les erreurs globales
+        window.addEventListener('error', (event) => {
+            console.error('Erreur globale:', event.error);
+            // Vous pouvez ajouter un système de notification d'erreur ici
+        });
+        
+        // Gérer les promesses rejetées
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Promesse rejetée:', event.reason);
+            // Vous pouvez ajouter un système de notification d'erreur ici
+        });
+        
+        // Service Worker pour le mode hors ligne (optionnel)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('Service Worker enregistré:', registration);
+                    
+                    // Détecter les mises à jour
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // Afficher la notification de mise à jour
+                                document.getElementById('updateNotification').classList.remove('hidden');
+                            }
+                        });
+                    });
+                }).catch(error => {
+                    console.log('Erreur Service Worker:', error);
+                });
+            });
+        }
+        
+        // Détection de la connexion Internet
+        window.addEventListener('online', () => {
+            console.log('Connexion rétablie');
+            // Vous pouvez ajouter une notification ici
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('Connexion perdue');
+            // Vous pouvez ajouter une notification ici
+        });
+    </script>
+    
+    <!-- Script pour détecter les appareils mobiles et ajuster l'interface -->
+    <script>
+        // Détection mobile
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+            document.body.classList.add('mobile-device');
+        }
+        
+        // Empêcher le zoom sur double-tap mobile
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (event) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+        
+        // Gérer l'orientation de l'écran
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+            }, 100);
+        });
     </script>
 </body>
 </html>
