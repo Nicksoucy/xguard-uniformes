@@ -10,7 +10,8 @@
       "XXL": 20,
       "3XL": 10
     },
-    "price": 30
+    "price": 30,
+    "category": "Hauts"
   },
   {
     "id": 2,
@@ -23,7 +24,8 @@
       "XXL": 25,
       "3XL": 10
     },
-    "price": 30
+    "price": 30,
+    "category": "Hauts"
   },
   {
     "id": 3,
@@ -35,7 +37,8 @@
       "XL": 30,
       "XXL": 15
     },
-    "price": 20
+    "price": 20,
+    "category": "Hauts"
   },
   {
     "id": 4,
@@ -47,7 +50,8 @@
       "XL": 30,
       "XXL": 15
     },
-    "price": 15
+    "price": 15,
+    "category": "Hauts"
   },
   {
     "id": 5,
@@ -55,7 +59,8 @@
     "sizes": {
       "Unique": 60
     },
-    "price": 8
+    "price": 8,
+    "category": "Accessoires"
   },
   {
     "id": 6,
@@ -63,7 +68,8 @@
     "sizes": {
       "Unique": 80
     },
-    "price": 8
+    "price": 8,
+    "category": "Accessoires"
   },
   {
     "id": 7,
@@ -71,7 +77,8 @@
     "sizes": {
       "Unique": 100
     },
-    "price": 10
+    "price": 10,
+    "category": "Accessoires"
   },
   {
     "id": 8,
@@ -84,7 +91,8 @@
       "XXL": 10,
       "3XL": 5
     },
-    "price": 27
+    "price": 27,
+    "category": "Bas"
   },
   {
     "id": 9,
@@ -96,7 +104,8 @@
       "XL": 20,
       "XXL": 15
     },
-    "price": 50
+    "price": 50,
+    "category": "Manteaux"
   },
   {
     "id": 10,
@@ -108,7 +117,8 @@
       "XL": 15,
       "XXL": 10
     },
-    "price": 150
+    "price": 150,
+    "category": "Manteaux"
   },
   {
     "id": 11,
@@ -118,7 +128,8 @@
       "L": 50,
       "XL": 50
     },
-    "price": 15
+    "price": 15,
+    "category": "Accessoires"
   },
   {
     "id": 12,
@@ -126,7 +137,8 @@
     "sizes": {
       "Unique": 40
     },
-    "price": 25
+    "price": 25,
+    "category": "Sécurité"
   },
   {
     "id": 13,
@@ -134,6 +146,7 @@
     "sizes": {
       "Unique": 100
     },
-    "price": 5
+    "price": 5,
+    "category": "Accessoires"
   }
 ]
