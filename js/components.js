@@ -1,5 +1,8 @@
 // ==================== COMPOSANTS RÉUTILISABLES ====================
 
+// Ajoutez des logs à chaque section
+console.log('📍 Point 1: Avant les exports de fonctions');
+
 // Header générique avec navigation
 export function renderHeader(title, showBackButton = true, showHomeButton = true) {
     return `
