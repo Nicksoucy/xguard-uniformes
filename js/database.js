@@ -58,7 +58,7 @@ export class Database {
         }
     }
 
-    // Gestion des employés
+    // ==================== GESTION DES EMPLOYÉS ====================
     addEmployee(employee) {
         employee.id = this.generateEmployeeId();
         employee.active = true;
@@ -91,7 +91,7 @@ export class Database {
         );
     }
 
-    // Gestion des transactions
+    // ==================== GESTION DES TRANSACTIONS ====================
     createTransaction(type, employeeId, items, notes = '') {
         const transaction = {
             id: this.generateId(),
@@ -139,6 +139,7 @@ export class Database {
         this.save();
     }
 
+    // Méthode de signature améliorée avec plus d'infos
     signTransaction(token, signature) {
         const link = this.data.links.find(l => l.token === token);
         if (!link || link.used) return null;
@@ -146,7 +147,15 @@ export class Database {
         const transaction = this.data.transactions.find(t => t.id === link.transactionId);
         if (!transaction) return null;
 
-        transaction.signature = signature;
+        // Stocker la signature complète avec toutes les infos
+        transaction.signature = {
+            data: signature.data,
+            timestamp: signature.timestamp,
+            signedAt: new Date().toISOString(),
+            ipAddress: signature.ipAddress || 'N/A',
+            userAgent: navigator.userAgent
+        };
+        
         transaction.signed = true;
         transaction.signedAt = new Date().toISOString();
         link.used = true;
@@ -186,6 +195,11 @@ export class Database {
         });
 
         return Object.values(balance).filter(item => item.quantity > 0);
+    }
+
+    // Nouvelle méthode pour obtenir toutes les signatures
+    getSignedTransactions() {
+        return this.data.transactions.filter(t => t.signed);
     }
 
     // ==================== NOUVELLES MÉTHODES POUR LA GESTION D'INVENTAIRE ====================
