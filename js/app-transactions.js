@@ -1,15 +1,15 @@
 // ==================== GESTION DES TRANSACTIONS ====================
 
 // Rendu de la page de transaction
-export function renderTransaction(app) {
-    const employee = app.db.getEmployee(app.currentEmployee);
+export function renderTransaction() {
+    const employee = this.db.getEmployee(this.currentEmployee);
     if (!employee) {
-        app.currentView = 'selectEmployee';
-        app.render();
+        this.currentView = 'selectEmployee';
+        this.render();
         return '';
     }
     
-    const balance = app.db.getEmployeeBalance(app.currentEmployee);
+    const balance = this.db.getEmployeeBalance(this.currentEmployee);
     
     return `
         <div class="min-h-screen bg-gray-50">
@@ -19,13 +19,13 @@ export function renderTransaction(app) {
                     <div class="flex justify-between items-center">
                         <div>
                             <h1 class="text-xl font-bold">
-                                ${app.transactionType === 'attribution' ? 'Attribution d\'uniformes' : 
-                                  app.transactionType === 'retour' ? 'Retour d\'uniformes' : 
+                                ${this.transactionType === 'attribution' ? 'Attribution d\'uniformes' : 
+                                  this.transactionType === 'retour' ? 'Retour d\'uniformes' : 
                                   'Ajout d\'équipement'}
                             </h1>
                             <p class="text-purple-100">${employee.name} (${employee.id})</p>
                         </div>
-                        <button onclick="app.currentView='home'; app.render()" 
+                        <button onclick="app.navigateTo('home')" 
                             class="p-2 hover:bg-white/20 rounded-lg transition" title="Accueil">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
@@ -41,12 +41,12 @@ export function renderTransaction(app) {
                     <div class="lg:col-span-2">
                         <div class="bg-white rounded-xl shadow-lg p-6">
                             <h2 class="text-xl font-semibold mb-4">
-                                ${app.transactionType === 'retour' ? 'Articles à retourner' : 'Sélection des articles'}
+                                ${this.transactionType === 'retour' ? 'Articles à retourner' : 'Sélection des articles'}
                             </h2>
                             
-                            ${app.transactionType === 'retour' ? 
-                                renderReturnItems(app, balance) : 
-                                renderInventorySelection(app)}
+                            ${this.transactionType === 'retour' ? 
+                                renderReturnItems(this, balance) : 
+                                renderInventorySelection(this)}
                         </div>
                     </div>
 
@@ -79,7 +79,7 @@ export function renderTransaction(app) {
                         <!-- Résumé de la transaction -->
                         <div class="bg-white rounded-xl shadow-lg p-6">
                             <h3 class="font-semibold mb-3">
-                                ${app.transactionType === 'retour' ? 'Articles à retourner' : 'Articles sélectionnés'}
+                                ${this.transactionType === 'retour' ? 'Articles à retourner' : 'Articles sélectionnés'}
                             </h3>
                             <div id="selection-summary" class="space-y-2 mb-4 max-h-64 overflow-y-auto">
                                 <p class="text-gray-500 text-center py-4">Aucun article sélectionné</p>
@@ -102,7 +102,7 @@ export function renderTransaction(app) {
                             <!-- Bouton de validation -->
                             <button onclick="app.validateTransaction()" 
                                 class="w-full mt-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 rounded-lg hover:from-purple-700 hover:to-purple-800 transition font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                                ${app.transactionType === 'retour' ? 
+                                ${this.transactionType === 'retour' ? 
                                     'Confirmer le retour' : 
                                     'Générer le lien de signature'}
                             </button>
@@ -181,8 +181,8 @@ function renderInventorySelection(app) {
 }
 
 // Rendu de la liste des transactions
-export function renderTransactionsList(app) {
-    const transactions = app.db.data.transactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+export function renderTransactionsList() {
+    const transactions = this.db.data.transactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     
     return `
         <div class="min-h-screen gradient-bg">
@@ -190,7 +190,7 @@ export function renderTransactionsList(app) {
             <div class="glass-effect shadow-lg">
                 <div class="max-w-6xl mx-auto p-4 flex justify-between items-center">
                     <h1 class="text-xl font-bold text-gray-800">Historique des transactions</h1>
-                    <button onclick="app.currentView='home'; app.render()" 
+                    <button onclick="app.navigateTo('home')" 
                         class="p-2 hover:bg-white/20 rounded-lg transition" title="Accueil">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
@@ -205,7 +205,7 @@ export function renderTransactionsList(app) {
                 </div>
 
                 <div class="space-y-4">
-                    ${transactions.map(t => renderTransactionCard(app, t)).join('')}
+                    ${transactions.map(t => renderTransactionCard(this, t)).join('')}
                 </div>
             </div>
         </div>
@@ -267,36 +267,17 @@ function renderTransactionCard(app, transaction) {
                     `).join('')}
                 </div>
                 ${transaction.notes ? `<p class="text-sm text-gray-600 mt-2 italic">Note: ${transaction.notes}</p>` : ''}
-                ${transaction.signed ? `
-                    <div class="mt-3 flex gap-2">
-                        <button onclick="app.viewTransactionPDF('${transaction.id}')" 
-                            class="flex-1 text-sm bg-blue-100 text-blue-700 px-4 py-2 rounded hover:bg-blue-200 transition">
-                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                            </svg>
-                            Voir PDF
-                        </button>
-                        <button onclick="app.downloadTransactionPDF('${transaction.id}')" 
-                            class="flex-1 text-sm bg-green-100 text-green-700 px-4 py-2 rounded hover:bg-green-200 transition">
-                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            Télécharger PDF
-                        </button>
-                    </div>
-                ` : ''}
             </div>
         </div>
     `;
 }
 
 // Rendu des signatures en attente
-export function renderPendingSignatures(app) {
-    const pendingLinks = app.db.data.links.filter(l => !l.used);
+export function renderPendingSignatures() {
+    const pendingLinks = this.db.data.links.filter(l => !l.used);
     const pendingTransactions = pendingLinks.map(link => ({
         link,
-        transaction: app.db.data.transactions.find(t => t.id === link.transactionId)
+        transaction: this.db.data.transactions.find(t => t.id === link.transactionId)
     })).filter(item => item.transaction);
     
     return `
@@ -305,7 +286,7 @@ export function renderPendingSignatures(app) {
             <div class="glass-effect shadow-lg">
                 <div class="max-w-6xl mx-auto p-4 flex justify-between items-center">
                     <h1 class="text-xl font-bold text-gray-800">Signatures en attente</h1>
-                    <button onclick="app.currentView='home'; app.render()" 
+                    <button onclick="app.navigateTo('home')" 
                         class="p-2 hover:bg-white/20 rounded-lg transition" title="Accueil">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
@@ -317,7 +298,7 @@ export function renderPendingSignatures(app) {
             <div class="max-w-6xl mx-auto p-6">
                 ${pendingTransactions.length === 0 ? 
                     renderNoSignatures() : 
-                    renderPendingList(app, pendingTransactions)}
+                    renderPendingList(this, pendingTransactions)}
             </div>
         </div>
     `;
@@ -393,18 +374,18 @@ function renderPendingList(app, pendingTransactions) {
 }
 
 // Rendu de la page de signature
-export function renderSignature(app) {
-    const link = app.db.data.links.find(l => l.token === app.currentToken);
+export function renderSignature() {
+    const link = this.db.data.links.find(l => l.token === this.currentToken);
     if (!link || link.used) {
         return renderError('Lien invalide', 'Ce lien a déjà été utilisé ou n\'existe pas.');
     }
 
-    const transaction = app.db.data.transactions.find(t => t.id === link.transactionId);
+    const transaction = this.db.data.transactions.find(t => t.id === link.transactionId);
     if (!transaction) {
         return renderError('Transaction introuvable', 'La transaction associée n\'existe pas.');
     }
 
-    const employee = app.db.getEmployee(transaction.employeeId);
+    const employee = this.db.getEmployee(transaction.employeeId);
     if (!employee) {
         return renderError('Employé introuvable', 'L\'employé associé n\'existe pas.');
     }
@@ -488,9 +469,41 @@ export function renderSignature(app) {
     `;
 }
 
+// Rendu du succès de signature
+export function renderSuccessSignature(transaction) {
+    const employee = this.db.getEmployee(transaction.employeeId);
+    
+    return `
+        <div class="min-h-screen flex items-center justify-center p-4 gradient-bg">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center animate-fade-in">
+                <div class="mb-6">
+                    <div class="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto animate-pulse">
+                        <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Signature confirmée!</h2>
+                <div class="bg-gray-50 rounded-xl p-6 mb-6 text-left">
+                    <p class="text-sm mb-2"><span class="text-gray-600">Employé:</span> <span class="font-medium">${employee ? employee.name : 'Inconnu'}</span></p>
+                    <p class="text-sm mb-2"><span class="text-gray-600">Code:</span> <span class="font-medium">${employee ? employee.id : 'N/A'}</span></p>
+                    <p class="text-sm mb-2"><span class="text-gray-600">Articles:</span> <span class="font-medium">${transaction.items.length}</span></p>
+                    <p class="text-sm"><span class="text-gray-600">Date:</span> <span class="font-medium">${new Date().toLocaleString('fr-CA')}</span></p>
+                </div>
+                <p class="text-gray-600 mb-6">La transaction a été enregistrée avec succès.</p>
+                
+                <button onclick="window.location.href=window.location.pathname" 
+                    class="w-full bg-gray-200 text-gray-700 py-3 rounded-xl hover:bg-gray-300 transition font-medium">
+                    Fermer
+                </button>
+            </div>
+        </div>
+    `;
+}
+
 // Validation de transaction
-export function validateTransaction(app) {
-    if (app.selection.length === 0) {
+export function validateTransaction() {
+    if (this.selection.length === 0) {
         alert('Veuillez sélectionner au moins un article');
         return;
     }
@@ -498,25 +511,24 @@ export function validateTransaction(app) {
     const notes = document.getElementById('transaction-notes')?.value || '';
     
     // Créer la transaction
-    const transaction = app.db.createTransaction(
-        app.transactionType,
-        app.currentEmployee,
-        app.selection,
+    const transaction = this.db.createTransaction(
+        this.transactionType,
+        this.currentEmployee,
+        this.selection,
         notes
     );
 
-    if (app.transactionType === 'retour') {
+    if (this.transactionType === 'retour') {
         // Pour un retour, pas besoin de signature
         alert('Retour enregistré avec succès!');
-        app.currentView = 'home';
-        app.render();
+        this.navigateTo('home');
     } else {
         // Pour attribution/ajout, afficher le lien
-        const employee = app.db.getEmployee(app.currentEmployee);
+        const employee = this.db.getEmployee(this.currentEmployee);
         const linkUrl = `${window.location.origin}${window.location.pathname}?token=${transaction.linkToken}`;
         
         // Créer le modal moderne
-        showTransactionModal(app, employee, linkUrl);
+        showTransactionModal(this, employee, linkUrl);
     }
 }
 
@@ -560,7 +572,7 @@ Merci,
 XGuard Réception</textarea>
             </div>
             
-            <button onclick="document.body.removeChild(this.closest('.fixed')); app.currentView='home'; app.render();" 
+            <button onclick="app.closeModal(); app.navigateTo('home');" 
                 class="w-full bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition font-medium">
                 Fermer et terminer
             </button>
@@ -570,23 +582,16 @@ XGuard Réception</textarea>
 }
 
 // Event handlers pour les signatures
-export function attachSignatureEvents(app) {
+export function attachSignatureEvents() {
     const canvas = document.getElementById('signature-pad');
-    if (!canvas) {
-        console.error('Canvas de signature non trouvé');
-        return;
-    }
+    if (!canvas) return;
 
-    // Stocker une référence à l'instance de l'app
-    const appInstance = app;
-
-    // Initialiser SignaturePad
     const signaturePad = new SignaturePad(canvas, {
         backgroundColor: 'rgb(255, 255, 255)',
         penColor: 'rgb(0, 0, 0)'
     });
 
-    // Fonction pour redimensionner le canvas
+    // Redimensionner
     function resizeCanvas() {
         const ratio = Math.max(window.devicePixelRatio || 1, 1);
         canvas.width = canvas.offsetWidth * ratio;
@@ -594,26 +599,20 @@ export function attachSignatureEvents(app) {
         canvas.getContext("2d").scale(ratio, ratio);
         signaturePad.clear();
     }
-    
-    // Redimensionner immédiatement
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // Bouton Effacer
+    // Boutons
     const clearBtn = document.getElementById('clear-signature');
     if (clearBtn) {
-        clearBtn.addEventListener('click', function(e) {
-            e.preventDefault();
+        clearBtn.addEventListener('click', () => {
             signaturePad.clear();
         });
     }
 
-    // Bouton Submit
     const submitBtn = document.getElementById('submit-signature');
     if (submitBtn) {
-        submitBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            
+        submitBtn.addEventListener('click', () => {
             if (signaturePad.isEmpty()) {
                 alert('Veuillez signer avant de soumettre');
                 return;
@@ -624,13 +623,10 @@ export function attachSignatureEvents(app) {
                 timestamp: new Date().toISOString()
             };
 
-            const transaction = appInstance.db.signTransaction(appInstance.currentToken, signature);
+            const transaction = this.db.signTransaction(this.currentToken, signature);
             
             if (transaction) {
-                const employee = appInstance.db.getEmployee(transaction.employeeId);
-                
-                // Afficher le succès avec animation
-                showSignatureSuccess(appInstance, transaction, employee);
+                document.getElementById('app').innerHTML = this.renderSuccessSignature(transaction);
             } else {
                 alert('Erreur lors de la signature. Le lien a peut-être déjà été utilisé.');
             }
@@ -638,46 +634,10 @@ export function attachSignatureEvents(app) {
     }
 }
 
-// Affichage du succès de signature
-function showSignatureSuccess(app, transaction, employee) {
-    const appDiv = document.getElementById('app');
-    appDiv.innerHTML = `
-        <div class="min-h-screen flex items-center justify-center p-4 gradient-bg">
-            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center animate-fade-in">
-                <div class="mb-6">
-                    <div class="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto animate-pulse">
-                        <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </div>
-                </div>
-                <h2 class="text-3xl font-bold text-gray-800 mb-4">Signature confirmée!</h2>
-                <div class="bg-gray-50 rounded-xl p-6 mb-6 text-left">
-                    <p class="text-sm mb-2"><span class="text-gray-600">Employé:</span> <span class="font-medium">${employee.name}</span></p>
-                    <p class="text-sm mb-2"><span class="text-gray-600">Code:</span> <span class="font-medium">${employee.id}</span></p>
-                    <p class="text-sm mb-2"><span class="text-gray-600">Articles:</span> <span class="font-medium">${transaction.items.length}</span></p>
-                    <p class="text-sm"><span class="text-gray-600">Date:</span> <span class="font-medium">${new Date().toLocaleString('fr-CA')}</span></p>
-                </div>
-                <p class="text-gray-600 mb-6">La transaction a été enregistrée avec succès.</p>
-                
-                <!-- Bouton pour télécharger le reçu -->
-                <button onclick="app.downloadTransactionPDF('${transaction.id}')" 
-                    class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-xl hover:from-blue-600 hover:to-blue-700 transition font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 mb-3">
-                    <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    Télécharger votre reçu (PDF)
-                </button>
-                
-                <button onclick="window.location.href=window.location.pathname" 
-                    class="w-full bg-gray-200 text-gray-700 py-3 rounded-xl hover:bg-gray-300 transition font-medium">
-                    Retour à l'accueil
-                </button>
-                
-                <p class="text-xs text-gray-500 mt-4">Gardez ce document pour vos dossiers</p>
-            </div>
-        </div>
-    `;
+// Event handler pour les transactions
+export function attachTransactionEvents() {
+    // Les events sont généralement inline dans le HTML
+    // Cette fonction peut être utilisée pour des événements additionnels si nécessaire
 }
 
 // Fonction utilitaire pour les erreurs
@@ -699,17 +659,13 @@ function renderError(title, message) {
     `;
 }
 
-// Event handler pour les transactions
-export function attachTransactionEvents(app) {
-    // Les events sont généralement inline dans le HTML
-    // Cette fonction peut être utilisée pour des événements additionnels si nécessaire
-}
-// À la toute fin de app-transactions.js, ajoutez :
+// Exports finaux
 export {
     renderTransaction,
     renderTransactionsList,
     renderPendingSignatures,
     renderSignature,
+    renderSuccessSignature,
     validateTransaction,
     attachSignatureEvents,
     attachTransactionEvents
