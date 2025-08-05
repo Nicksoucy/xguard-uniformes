@@ -6,6 +6,7 @@
     <title>XGuard - Système de Gestion des Uniformes</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         /* Animations et styles modernes */
         @keyframes fadeIn {
@@ -250,21 +251,22 @@
                 this.save();
             }
 
-            signTransaction(token, signature) {
-                const link = this.data.links.find(l => l.token === token);
-                if (!link || link.used) return null;
+            signTransaction(token, signature, pdfData = null) {
+    const link = this.data.links.find(l => l.token === token);
+    if (!link || link.used) return null;
 
-                const transaction = this.data.transactions.find(t => t.id === link.transactionId);
-                if (!transaction) return null;
+    const transaction = this.data.transactions.find(t => t.id === link.transactionId);
+    if (!transaction) return null;
 
-                transaction.signature = signature;
-                transaction.signed = true;
-                transaction.signedAt = new Date().toISOString();
-                link.used = true;
+    transaction.signature = signature;
+    transaction.signed = true;
+    transaction.signedAt = new Date().toISOString();
+    transaction.signedPdf = pdfData; // Stocker le PDF
+    link.used = true;
 
-                this.save();
-                return transaction;
-            }
+    this.save();
+    return transaction;
+}
 
             getEmployeeTransactions(employeeId) {
                 return this.data.transactions
@@ -1706,10 +1708,20 @@
                                                                 ${typeText}
                                                             </span>
                                                             ${t.signed ? `
-                                                                <span class="ml-2 px-2 py-1 bg-green-100 text-green-700 rounded text-sm">
-                                                                    ✓ Signé
-                                                                </span>
-                                                            ` : ''}
+    <span class="ml-2 px-2 py-1 bg-green-100 text-green-700 rounded text-sm">
+        ✓ Signé
+    </span>
+    ${t.signedPdf ? `
+        <button onclick="app.downloadSignedPDF('${t.id}')" 
+            class="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition"
+            title="Télécharger le PDF signé">
+            <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            PDF
+        </button>
+    ` : ''}
+` : ''}
                                                         </div>
                                                         <p class="text-sm text-gray-600">${new Date(t.createdAt).toLocaleString('fr-CA')}</p>
                                                     </div>
@@ -2018,6 +2030,58 @@ ${qty}
                 totalDiv.textContent = `$${total}`;
             }
 
+            generateSignedPDF(transaction, employee, signature) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // En-tête
+    doc.setFontSize(20);
+    doc.text('XGuard - Confirmation de réception', 105, 20, { align: 'center' });
+    
+    // Informations de l'employé
+    doc.setFontSize(12);
+    doc.text(`Employé: ${employee.name}`, 20, 40);
+    doc.text(`Code: ${employee.id}`, 20, 50);
+    doc.text(`Téléphone: ${employee.phone}`, 20, 60);
+    doc.text(`Date: ${new Date().toLocaleDateString('fr-CA')}`, 20, 70);
+    
+    // Type de transaction
+    const typeText = transaction.type === 'attribution' ? 'Attribution d\'uniformes' : 'Ajout d\'équipement';
+    doc.setFontSize(14);
+    doc.text(typeText, 20, 90);
+    
+    // Articles
+    doc.setFontSize(12);
+    doc.text('Articles reçus:', 20, 105);
+    let yPos = 115;
+    const total = transaction.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    transaction.items.forEach(item => {
+        doc.text(`${item.quantity}x ${item.name} (Taille: ${item.size}) - $${item.price * item.quantity}`, 30, yPos);
+        yPos += 10;
+    });
+    
+    // Total
+    doc.setFontSize(14);
+    doc.text(`Total à retenir si non retourné: $${total}`, 20, yPos + 10);
+    
+    // Conditions
+    doc.setFontSize(10);
+    yPos += 30;
+    doc.text('CONDITIONS:', 20, yPos);
+    doc.text('- En cas de démission ou renvoi, les uniformes doivent être retournés dans les 5 jours', 25, yPos + 10);
+    doc.text(`- Si non retournés, $${total} sera déduit de la dernière paie`, 25, yPos + 20);
+    doc.text('- Les uniformes restent la propriété de XGuard', 25, yPos + 30);
+    
+    // Signature
+    if (signature && signature.data) {
+        doc.text('Signature électronique:', 20, yPos + 50);
+        doc.addImage(signature.data, 'PNG', 20, yPos + 60, 80, 40);
+    }
+    
+    return doc;
+}
+            
             copyLink(url) {
                 navigator.clipboard.writeText(url).then(() => {
                     // Animation de confirmation
@@ -2098,6 +2162,19 @@ ${qty}
             }
 
             downloadCSV(csvContent, filename) {
+                downloadSignedPDF(transactionId) {
+    const transaction = this.db.data.transactions.find(t => t.id === transactionId);
+    if (!transaction || !transaction.signedPdf) {
+        alert('Document non disponible');
+        return;
+    }
+    
+    // Créer un lien de téléchargement
+    const link = document.createElement('a');
+    link.href = transaction.signedPdf;
+    link.download = `XGuard_Reception_${transaction.employeeId}_${new Date(transaction.signedAt).toISOString().split('T')[0]}.pdf`;
+    link.click();
+}
                 const BOM = '\uFEFF';
                 const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement('a');
@@ -2657,16 +2734,24 @@ XGuard Réception</textarea>
                             timestamp: new Date().toISOString()
                         };
 
-                        const transaction = this.db.signTransaction(this.currentToken, signature);
-                        
-                        if (transaction) {
-                            const employee = this.db.getEmployee(transaction.employeeId);
-                            
-                            // Afficher le succès avec animation
-                            const app = document.getElementById('app');
-                            app.innerHTML = `
-                                <div class="min-h-screen flex items-center justify-center p-4 gradient-bg">
-                                    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center animate-fade-in">
+                        // Générer le PDF
+const transactionTemp = this.db.data.transactions.find(t => 
+    t.id === this.db.data.links.find(l => l.token === this.currentToken).transactionId
+);
+const employeeTemp = this.db.getEmployee(transactionTemp.employeeId);
+const pdf = this.generateSignedPDF(transactionTemp, employeeTemp, signature);
+const pdfData = pdf.output('datauristring');
+
+const transaction = this.db.signTransaction(this.currentToken, signature, pdfData);
+
+if (transaction) {
+    const employee = this.db.getEmployee(transaction.employeeId);
+    
+    // Afficher le succès avec animation
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <div class="min-h-screen flex items-center justify-center p-4 gradient-bg">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center animate-fade-in">
                                         <div class="mb-6">
                                             <div class="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto animate-pulse">
                                                 <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2681,10 +2766,18 @@ XGuard Réception</textarea>
                                             <p class="text-sm mb-2"><span class="text-gray-600">Articles:</span> <span class="font-medium">${transaction.items.length}</span></p>
                                             <p class="text-sm"><span class="text-gray-600">Date:</span> <span class="font-medium">${new Date().toLocaleString('fr-CA')}</span></p>
                                         </div>
-                                        <p class="text-gray-600">La transaction a été enregistrée avec succès.</p>
-                                    </div>
-                                </div>
-                            `;
+                                        <p class="text-gray-600 mb-6">La transaction a été enregistrée avec succès.</p>
+<button onclick="app.downloadSignedPDF('${transaction.id}')" 
+    class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-blue-600 hover:to-blue-700 transition font-medium shadow-lg">
+    <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+    </svg>
+    Télécharger votre copie PDF
+</button>
+</div>
+</div>
+</div>
+`;
                         }
                     });
                 }
