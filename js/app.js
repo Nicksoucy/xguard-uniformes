@@ -1,17 +1,28 @@
-// ==================== APPLICATION PRINCIPALE ====================
+// ==================== APPLICATION PRINCIPALE XGUARD ====================
+// Imports des modules
 import { Database } from './database.js';
-import { Components } from './components.js';
+import { renderHome, renderInventory, renderLowStock, renderError, renderInventoryManagement, renderNewInventoryItem } from './app-inventory.js';
+import { renderEmployeesList, renderSelectEmployee, renderNewEmployee, renderEmployeeDetails } from './app-employees.js';
+import { renderTransaction, renderTransactionsList, renderPendingSignatures, renderSignature, renderSuccessSignature } from './app-transactions.js';
+import { downloadCSV, formatDate, formatCurrency, showNotification } from './utils.js';
+import { renderHeader, renderModal, renderLoadingSpinner } from './components.js';
 
-export class XGuardApp {
+// ==================== CLASSE PRINCIPALE ====================
+class XGuardApp {
     constructor() {
+        // Initialisation de la base de données
         this.db = new Database();
+        
+        // État de l'application
         this.currentView = 'home';
         this.currentEmployee = null;
         this.selection = [];
         this.transactionType = 'attribution';
         this.showInactive = false;
+        this.currentCategory = 'all';
+        this.editingItem = null;
         
-        // Vérifier si on a un token de signature
+        // Vérifier si on a un token de signature dans l'URL
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         if (token) {
@@ -19,15 +30,40 @@ export class XGuardApp {
             this.currentView = 'signature';
         }
 
-        // Initialiser la gestion de l'historique
+        // Initialiser la navigation
         this.initNavigation();
         
-        this.render();
+        // Initialiser l'application
+        this.init();
     }
 
-    // Initialiser la navigation
+    // ==================== INITIALISATION ====================
+    async init() {
+        try {
+            // Afficher le spinner de chargement
+            document.getElementById('app').innerHTML = renderLoadingSpinner();
+            
+            // Charger l'inventaire depuis le JSON si nécessaire
+            await this.db.loadInventoryFromJSON();
+            
+            // Rendre la vue initiale
+            this.render();
+            
+            // Initialiser les raccourcis clavier
+            this.initKeyboardShortcuts();
+            
+        } catch (error) {
+            console.error('Erreur lors de l\'initialisation:', error);
+            document.getElementById('app').innerHTML = renderError(
+                'Erreur de chargement',
+                'Impossible de charger l\'application. Veuillez rafraîchir la page.'
+            );
+        }
+    }
+
+    // ==================== NAVIGATION ====================
     initNavigation() {
-        // Ajouter l'état initial
+        // Gérer l'historique du navigateur
         window.history.replaceState(
             { view: this.currentView, employee: this.currentEmployee },
             '',
@@ -44,78 +80,194 @@ export class XGuardApp {
         });
     }
 
+    navigateTo(view, params = {}) {
+        this.currentView = view;
+        
+        // Mettre à jour les paramètres
+        if (params.employee) this.currentEmployee = params.employee;
+        if (params.type) this.transactionType = params.type;
+        
+        // Mettre à jour l'URL
+        const url = this.currentView === 'signature' && this.currentToken 
+            ? `?token=${this.currentToken}` 
+            : window.location.pathname;
+            
+        window.history.pushState(
+            { view: this.currentView, employee: this.currentEmployee },
+            '',
+            url
+        );
+        
+        this.render();
+    }
+
+    // ==================== RENDU PRINCIPAL ====================
     render() {
         const app = document.getElementById('app');
         
-        // Mettre à jour l'URL et l'historique
-        if (!window.history.state || window.history.state.view !== this.currentView) {
-            const url = this.currentView === 'signature' && this.currentToken 
-                ? `?token=${this.currentToken}` 
-                : window.location.pathname;
-                
-            window.history.pushState(
-                { view: this.currentView, employee: this.currentEmployee },
-                '',
-                url
-            );
-        }
-        
-        switch(this.currentView) {
-            case 'home':
-                app.innerHTML = Components.renderHome.call(this, this.getHomeStats());
-                this.attachHomeEvents();
-                break;
-            case 'newEmployee':
-                app.innerHTML = Components.renderNewEmployee.call(this);
-                this.attachNewEmployeeEvents();
-                break;
-            case 'selectEmployee':
-                app.innerHTML = Components.renderSelectEmployee.call(this);
-                this.attachSelectEmployeeEvents();
-                break;
-            case 'transaction':
-                app.innerHTML = Components.renderTransaction.call(this);
-                this.attachTransactionEvents();
-                break;
-            case 'signature':
-                app.innerHTML = Components.renderSignature.call(this);
-                this.attachSignatureEvents();
-                break;
-            case 'employeeDetails':
-                app.innerHTML = Components.renderEmployeeDetails.call(this);
-                break;
-            case 'employees':
-                app.innerHTML = Components.renderEmployeesList.call(this);
-                break;
-            case 'transactions':
-                app.innerHTML = Components.renderTransactionsList.call(this);
-                break;
-            case 'pendingSignatures':
-                app.innerHTML = Components.renderPendingSignatures.call(this);
-                break;
-            case 'lowStock':
-                app.innerHTML = Components.renderLowStock.call(this);
-                break;
-            case 'inventory':
-                app.innerHTML = Components.renderInventory.call(this);
-                break;
-            case 'inventoryManagement':
-                app.innerHTML = Components.renderInventoryManagement.call(this);
-                this.attachInventoryManagementEvents();
-                break;
+        try {
+            switch(this.currentView) {
+                case 'home':
+                    app.innerHTML = renderHome.call(this);
+                    this.attachHomeEvents();
+                    break;
+                    
+                case 'newEmployee':
+                    app.innerHTML = renderNewEmployee.call(this);
+                    this.attachNewEmployeeEvents();
+                    break;
+                    
+                case 'selectEmployee':
+                    app.innerHTML = renderSelectEmployee.call(this);
+                    this.attachSelectEmployeeEvents();
+                    break;
+                    
+                case 'transaction':
+                    app.innerHTML = renderTransaction.call(this);
+                    this.attachTransactionEvents();
+                    break;
+                    
+                case 'signature':
+                    app.innerHTML = renderSignature.call(this);
+                    this.attachSignatureEvents();
+                    break;
+                    
+                case 'employeeDetails':
+                    app.innerHTML = renderEmployeeDetails.call(this);
+                    this.attachEmployeeDetailsEvents();
+                    break;
+                    
+                case 'employees':
+                    app.innerHTML = renderEmployeesList.call(this);
+                    this.attachEmployeesListEvents();
+                    break;
+                    
+                case 'transactions':
+                    app.innerHTML = renderTransactionsList.call(this);
+                    this.attachTransactionsListEvents();
+                    break;
+                    
+                case 'pendingSignatures':
+                    app.innerHTML = renderPendingSignatures.call(this);
+                    this.attachPendingSignaturesEvents();
+                    break;
+                    
+                case 'lowStock':
+                    app.innerHTML = renderLowStock.call(this);
+                    break;
+                    
+                case 'inventory':
+                    app.innerHTML = renderInventory.call(this);
+                    break;
+                    
+                case 'inventoryManagement':
+                    app.innerHTML = renderInventoryManagement.call(this);
+                    this.attachInventoryManagementEvents();
+                    break;
+                    
+                case 'newInventoryItem':
+                    app.innerHTML = renderNewInventoryItem.call(this);
+                    this.attachNewInventoryItemEvents();
+                    break;
+                    
+                default:
+                    app.innerHTML = renderError('Page introuvable', 'Cette page n\'existe pas.');
+            }
+        } catch (error) {
+            console.error('Erreur lors du rendu:', error);
+            app.innerHTML = renderError('Erreur', 'Une erreur est survenue lors de l\'affichage de la page.');
         }
     }
 
-    // Méthodes utilitaires
-    getHomeStats() {
-        return {
-            totalEmployees: this.db.data.employees.filter(e => e.active).length,
-            totalTransactions: this.db.data.transactions.length,
-            pendingSignatures: this.db.data.links.filter(l => !l.used).length,
-            lowStock: this.db.data.inventory.filter(item => 
-                Object.values(item.sizes).some(qty => qty < 10)
-            ).length
-        };
+    // ==================== MÉTHODES DE TRANSACTION ====================
+    startTransaction(type) {
+        this.transactionType = type;
+        this.selection = [];
+        this.navigateTo('selectEmployee', { type });
+    }
+
+    startTransactionForEmployee(type, employeeId) {
+        this.transactionType = type;
+        this.currentEmployee = employeeId;
+        this.selection = [];
+        this.navigateTo('transaction', { employee: employeeId, type });
+    }
+
+    selectEmployee(employeeId) {
+        this.currentEmployee = employeeId;
+        this.navigateTo('transaction', { employee: employeeId });
+    }
+
+    validateTransaction() {
+        if (this.selection.length === 0) {
+            showNotification('Veuillez sélectionner au moins un article', 'error');
+            return;
+        }
+
+        const notes = document.getElementById('transaction-notes')?.value || '';
+        
+        try {
+            // Créer la transaction
+            const transaction = this.db.createTransaction(
+                this.transactionType,
+                this.currentEmployee,
+                this.selection,
+                notes
+            );
+
+            if (this.transactionType === 'retour') {
+                // Pour un retour, pas besoin de signature
+                showNotification('Retour enregistré avec succès!', 'success');
+                this.navigateTo('home');
+            } else {
+                // Pour attribution/ajout, afficher le lien
+                this.showSignatureLinkModal(transaction);
+            }
+        } catch (error) {
+            console.error('Erreur lors de la validation:', error);
+            showNotification('Erreur lors de la création de la transaction', 'error');
+        }
+    }
+
+    // ==================== MÉTHODES DE SÉLECTION ====================
+    addToSelection(name, size, price, stock) {
+        const existing = this.selection.find(s => s.name === name && s.size === size);
+        
+        if (existing) {
+            if (existing.quantity < stock) {
+                existing.quantity++;
+            } else {
+                showNotification(`Stock maximum disponible: ${stock}`, 'warning');
+                return;
+            }
+        } else {
+            this.selection.push({
+                name,
+                size,
+                quantity: 1,
+                price
+            });
+        }
+
+        this.updateSelectionSummary();
+    }
+
+    updateReturnQuantity(name, size, price, quantity) {
+        const qty = parseInt(quantity) || 0;
+        
+        // Retirer de la sélection si 0
+        this.selection = this.selection.filter(s => !(s.name === name && s.size === size));
+        
+        if (qty > 0) {
+            this.selection.push({
+                name,
+                size,
+                quantity: qty,
+                price
+            });
+        }
+
+        this.updateSelectionSummary();
     }
 
     updateSelectionSummary() {
@@ -126,213 +278,22 @@ export class XGuardApp {
         
         if (this.selection.length === 0) {
             summaryDiv.innerHTML = '<p class="text-gray-500 text-center py-4">Aucun article sélectionné</p>';
-            totalDiv.textContent = '$0';
+            totalDiv.textContent = formatCurrency(0);
             return;
         }
 
         summaryDiv.innerHTML = this.selection.map(item => `
             <div class="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
                 <span>${item.name} - ${item.size} (×${item.quantity})</span>
-                <span class="font-medium">$${item.price * item.quantity}</span>
+                <span class="font-medium">${formatCurrency(item.price * item.quantity)}</span>
             </div>
         `).join('');
 
         const total = this.selection.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        totalDiv.textContent = `$${total}`;
+        totalDiv.textContent = formatCurrency(total);
     }
 
-    copyLink(url) {
-        navigator.clipboard.writeText(url).then(() => {
-            const btn = event.target;
-            const originalText = btn.textContent;
-            btn.textContent = 'Copié!';
-            btn.classList.add('bg-green-600');
-            setTimeout(() => {
-                btn.textContent = originalText;
-                btn.classList.remove('bg-green-600');
-            }, 2000);
-        }).catch(() => {
-            // Fallback
-            const input = document.createElement('input');
-            input.value = url;
-            document.body.appendChild(input);
-            input.select();
-            document.execCommand('copy');
-            document.body.removeChild(input);
-            
-            const btn = event.target;
-            const originalText = btn.textContent;
-            btn.textContent = 'Copié!';
-            btn.classList.add('bg-green-600');
-            setTimeout(() => {
-                btn.textContent = originalText;
-                btn.classList.remove('bg-green-600');
-            }, 2000);
-        });
-    }
-
-    // Méthodes de téléchargement
-    downloadEmployeeReport() {
-        const employees = this.db.data.employees.filter(e => e.active);
-        let csv = 'Code employé,Nom,Téléphone,Email,Statut,Article,Taille,Quantité,Prix unitaire,Valeur totale\n';
-        
-        employees.forEach(employee => {
-            const balance = this.db.getEmployeeBalance(employee.id);
-            const status = employee.active ? 'Actif' : 'Inactif';
-            if (balance.length === 0) {
-                csv += `"${employee.id}","${employee.name}","${employee.phone}","${employee.email || ''}","${status}","","","0","0","0"\n`;
-            } else {
-                balance.forEach(item => {
-                    csv += `"${employee.id}","${employee.name}","${employee.phone}","${employee.email || ''}","${status}","${item.name}","${item.size}","${item.quantity}","${item.price}","${item.quantity * item.price}"\n`;
-                });
-            }
-        });
-        
-        this.downloadCSV(csv, `xguard_employes_actifs_${new Date().toISOString().split('T')[0]}.csv`);
-    }
-
-    downloadInventoryReport() {
-        let csv = 'Article,Taille,Stock actuel,Prix unitaire,Valeur totale,Statut\n';
-        
-        this.db.data.inventory.forEach(item => {
-            Object.entries(item.sizes).forEach(([size, stock]) => {
-                const status = stock === 0 ? 'Rupture' : stock < 10 ? 'Faible' : 'OK';
-                csv += `"${item.name}","${size}","${stock}","${item.price}","${stock * item.price}","${status}"\n`;
-            });
-        });
-        
-        this.downloadCSV(csv, `xguard_inventaire_${new Date().toISOString().split('T')[0]}.csv`);
-    }
-
-    downloadMovementsReport() {
-        let csv = 'Date,Type,Article,Taille,Quantité,Raison,Fournisseur,Coût,Notes,Créé par\n';
-        
-        const movements = this.db.getInventoryMovements(999999); // Tous les mouvements
-        movements.forEach(m => {
-            const typeText = m.type === 'purchase' ? 'Achat' : 
-                           m.type === 'adjustment' ? 'Ajustement' : 
-                           m.type === 'attribution' ? 'Attribution' : 
-                           m.type === 'retour' ? 'Retour' : m.type;
-            
-            csv += `"${new Date(m.date).toLocaleString('fr-CA')}","${typeText}","${m.item}","${m.size}","${m.quantity}","${m.reason || ''}","${m.supplier || ''}","${m.cost || ''}","${m.notes || ''}","${m.createdBy}"\n`;
-        });
-        
-        this.downloadCSV(csv, `xguard_mouvements_inventaire_${new Date().toISOString().split('T')[0]}.csv`);
-    }
-
-    downloadCSV(csvContent, filename) {
-        const BOM = '\uFEFF';
-        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        
-        if (navigator.msSaveBlob) {
-            navigator.msSaveBlob(blob, filename);
-        } else {
-            link.href = URL.createObjectURL(blob);
-            link.download = filename;
-            link.click();
-            URL.revokeObjectURL(link.href);
-        }
-    }
-
-    // Méthodes de validation
-    validateTransaction() {
-        if (this.selection.length === 0) {
-            alert('Veuillez sélectionner au moins un article');
-            return;
-        }
-
-        const notes = document.getElementById('transaction-notes')?.value || '';
-        
-        // Créer la transaction
-        const transaction = this.db.createTransaction(
-            this.transactionType,
-            this.currentEmployee,
-            this.selection,
-            notes
-        );
-
-        if (this.transactionType === 'retour') {
-            // Pour un retour, pas besoin de signature
-            alert('Retour enregistré avec succès!');
-            this.currentView = 'home';
-            this.render();
-        } else {
-            // Pour attribution/ajout, afficher le lien
-            const employee = this.db.getEmployee(this.currentEmployee);
-            const linkUrl = `${window.location.origin}${window.location.pathname}?token=${transaction.linkToken}`;
-            
-            // Créer le modal moderne
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in';
-            modal.innerHTML = `
-                <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full animate-fade-in">
-                    <div class="text-center mb-6">
-                        <div class="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                        </div>
-                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Lien généré avec succès!</h3>
-                        <p class="text-gray-600">Envoyez ce lien à ${employee.name}</p>
-                    </div>
-                    
-                    <div class="bg-gray-50 rounded-xl p-4 mb-6">
-                        <p class="text-sm text-gray-600 mb-3">Lien de signature:</p>
-                        <div class="flex items-center gap-2">
-                            <input type="text" value="${linkUrl}" readonly 
-                                class="flex-1 px-3 py-2 bg-white border rounded-lg text-sm" id="modal-link-input">
-                            <button onclick="app.copyLink('${linkUrl}')" 
-                                class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition">
-                                Copier
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-blue-50 rounded-xl p-4 mb-6">
-                        <p class="text-sm font-semibold mb-2">Message SMS suggéré:</p>
-                        <textarea readonly rows="6" class="w-full p-3 bg-white rounded-lg text-xs border">Bonjour ${employee.name},
-
-Vos uniformes XGuard sont prêts. Veuillez confirmer la réception en signant sur ce lien:
-
-${linkUrl}
-
-Merci,
-XGuard Réception</textarea>
-                    </div>
-                    
-                    <button onclick="document.body.removeChild(this.closest('.fixed')); app.currentView='home'; app.render();" 
-                        class="w-full bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition font-medium">
-                        Fermer et terminer
-                    </button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-    }
-
-    // Méthodes d'interaction
-    startTransaction(type) {
-        this.transactionType = type;
-        this.selection = [];
-        this.currentView = 'selectEmployee';
-        this.render();
-    }
-
-    startTransactionForEmployee(type, employeeId) {
-        this.transactionType = type;
-        this.currentEmployee = employeeId;
-        this.selection = [];
-        this.currentView = 'transaction';
-        this.render();
-    }
-
-    selectEmployee(employeeId) {
-        this.currentEmployee = employeeId;
-        this.currentView = 'transaction';
-        this.render();
-    }
-
+    // ==================== MÉTHODES EMPLOYÉS ====================
     filterEmployees(query) {
         const employees = this.db.searchEmployees(query);
         const listDiv = document.getElementById('employee-list');
@@ -372,195 +333,136 @@ XGuard Réception</textarea>
         }).join('');
     }
 
-    addToSelection(name, size, price, stock) {
-        const existing = this.selection.find(s => s.name === name && s.size === size);
-        
-        if (existing) {
-            if (existing.quantity < stock) {
-                existing.quantity++;
-            } else {
-                alert(`Stock maximum disponible: ${stock}`);
-                return;
-            }
-        } else {
-            this.selection.push({
-                name,
-                size,
-                quantity: 1,
-                price
-            });
-        }
-
-        this.updateSelectionSummary();
-    }
-
-    updateReturnQuantity(name, size, price, quantity) {
-        const qty = parseInt(quantity) || 0;
-        
-        // Retirer de la sélection si 0
-        this.selection = this.selection.filter(s => !(s.name === name && s.size === size));
-        
-        if (qty > 0) {
-            this.selection.push({
-                name,
-                size,
-                quantity: qty,
-                price
-            });
-        }
-
-        this.updateSelectionSummary();
-    }
-
-    // Méthodes pour activer/désactiver
     deactivateEmployee(employeeId) {
         if (confirm('Êtes-vous sûr de vouloir désactiver cet employé?')) {
             this.db.updateEmployee(employeeId, { active: false });
-            this.currentView = 'employees';
-            this.render();
+            showNotification('Employé désactivé', 'success');
+            this.navigateTo('employees');
         }
     }
 
     reactivateEmployee(employeeId) {
         this.db.updateEmployee(employeeId, { active: true });
+        showNotification('Employé réactivé', 'success');
         this.render();
     }
 
-    // Méthodes pour la gestion d'inventaire
-    showPurchaseModal() {
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
-        modal.innerHTML = Components.renderPurchaseModal.call(this);
-        document.body.appendChild(modal);
-        
-        // Gérer le changement d'article
-        document.getElementById('purchase-item').addEventListener('change', (e) => {
-            const itemName = e.target.value;
-            const sizeSelect = document.getElementById('purchase-size');
-            
-            if (itemName) {
-                const item = this.db.data.inventory.find(i => i.name === itemName);
-                sizeSelect.disabled = false;
-                sizeSelect.innerHTML = '<option value="">Sélectionner une taille</option>' +
-                    Object.keys(item.sizes).map(size => 
-                        `<option value="${size}">${size}</option>`
-                    ).join('');
-            } else {
-                sizeSelect.disabled = true;
-                sizeSelect.innerHTML = '<option value="">Sélectionner d\'abord un article</option>';
-            }
-        });
-        
-        // Gérer la soumission
-        document.getElementById('purchase-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.processPurchase();
-        });
-    }
-
-    closePurchaseModal() {
-        const modal = document.querySelector('.fixed.inset-0');
-        if (modal) modal.remove();
-    }
-
-    processPurchase() {
-        const item = document.getElementById('purchase-item').value;
-        const size = document.getElementById('purchase-size').value;
-        const quantity = parseInt(document.getElementById('purchase-quantity').value);
-        const cost = parseFloat(document.getElementById('purchase-cost').value) || 0;
-        const supplier = document.getElementById('purchase-supplier').value;
-        const notes = document.getElementById('purchase-notes').value;
-        
-        this.db.recordPurchase(item, size, quantity, cost, supplier, notes);
-        this.closePurchaseModal();
+    // ==================== MÉTHODES INVENTAIRE ====================
+    filterInventoryByCategory(category) {
+        this.currentCategory = category;
         this.render();
     }
 
-    showAdjustmentModal() {
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
-        modal.innerHTML = Components.renderAdjustmentModal.call(this);
-        document.body.appendChild(modal);
+    editInventoryItem(itemId) {
+        this.editingItem = itemId;
+        this.render();
+    }
+
+    saveInventoryItem(itemId) {
+        const item = this.db.data.inventory.find(i => i.id === itemId);
+        if (!item) return;
+
+        const nameInput = document.getElementById(`edit-name-${itemId}`);
+        const priceInput = document.getElementById(`edit-price-${itemId}`);
         
-        // Gérer le changement d'article
-        document.getElementById('adjust-item').addEventListener('change', (e) => {
-            const itemName = e.target.value;
-            const sizeSelect = document.getElementById('adjust-size');
+        if (nameInput && priceInput) {
+            const newName = nameInput.value.trim();
+            const newPrice = parseFloat(priceInput.value);
             
-            if (itemName) {
-                const item = this.db.data.inventory.find(i => i.name === itemName);
-                sizeSelect.disabled = false;
-                sizeSelect.innerHTML = '<option value="">Sélectionner une taille</option>' +
-                    Object.keys(item.sizes).map(size => 
-                        `<option value="${size}">${size} (Stock actuel: ${item.sizes[size]})</option>`
-                    ).join('');
+            if (newName && newPrice > 0) {
+                this.db.updateInventoryItem(itemId, { name: newName, price: newPrice });
+                showNotification('Article mis à jour', 'success');
+                this.editingItem = null;
+                this.render();
             } else {
-                sizeSelect.disabled = true;
-                sizeSelect.innerHTML = '<option value="">Sélectionner d\'abord un article</option>';
+                showNotification('Veuillez remplir tous les champs correctement', 'error');
             }
+        }
+    }
+
+    cancelEditInventoryItem() {
+        this.editingItem = null;
+        this.render();
+    }
+
+    deleteInventoryItem(itemId) {
+        if (confirm('Êtes-vous sûr de vouloir supprimer cet article?')) {
+            const result = this.db.deleteInventoryItem(itemId);
+            if (result.success) {
+                showNotification('Article supprimé', 'success');
+                this.render();
+            } else {
+                showNotification(result.message, 'error');
+            }
+        }
+    }
+
+    adjustInventoryStock(itemName, size) {
+        const modal = renderModal({
+            title: 'Ajuster le stock',
+            content: this.renderAdjustStockForm(itemName, size),
+            onClose: () => this.closeModal(),
+            onSubmit: () => this.processStockAdjustment()
         });
         
-        // Gérer la soumission
-        document.getElementById('adjustment-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.processAdjustment();
-        });
+        document.body.appendChild(modal);
     }
 
-    closeAdjustmentModal() {
-        const modal = document.querySelector('.fixed.inset-0');
-        if (modal) modal.remove();
+    renderAdjustStockForm(itemName, size) {
+        const item = this.db.data.inventory.find(i => i.name === itemName);
+        const currentStock = item.sizes[size];
+        
+        return `
+            <form id="adjust-stock-form">
+                <input type="hidden" id="adjust-item" value="${itemName}">
+                <input type="hidden" id="adjust-size" value="${size}">
+                
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600">Article: <strong>${itemName}</strong></p>
+                    <p class="text-sm text-gray-600">Taille: <strong>${size}</strong></p>
+                    <p class="text-sm text-gray-600">Stock actuel: <strong>${currentStock}</strong></p>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Type d'ajustement</label>
+                    <select id="adjust-type" class="w-full p-2 border rounded-lg">
+                        <option value="set">Définir le stock à</option>
+                        <option value="add">Ajouter au stock</option>
+                        <option value="remove">Retirer du stock</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Quantité</label>
+                    <input type="number" id="adjust-quantity" min="0" required
+                        class="w-full p-2 border rounded-lg">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Raison</label>
+                    <select id="adjust-reason" class="w-full p-2 border rounded-lg">
+                        <option value="inventory">Inventaire physique</option>
+                        <option value="damage">Articles endommagés</option>
+                        <option value="loss">Perte</option>
+                        <option value="correction">Correction d'erreur</option>
+                        <option value="other">Autre</option>
+                    </select>
+                </div>
+            </form>
+        `;
     }
 
-    processAdjustment() {
+    processStockAdjustment() {
         const itemName = document.getElementById('adjust-item').value;
         const size = document.getElementById('adjust-size').value;
         const type = document.getElementById('adjust-type').value;
         const quantity = parseInt(document.getElementById('adjust-quantity').value);
         const reason = document.getElementById('adjust-reason').value;
-        const notes = document.getElementById('adjust-notes').value;
         
-        const item = this.db.data.inventory.find(i => i.name === itemName);
-        const currentStock = item.sizes[size];
-        
-        let adjustmentQty = 0;
-        if (type === 'add') {
-            adjustmentQty = quantity;
-        } else if (type === 'remove') {
-            adjustmentQty = -quantity;
-        } else if (type === 'set') {
-            adjustmentQty = quantity - currentStock;
+        if (isNaN(quantity) || quantity < 0) {
+            showNotification('Quantité invalide', 'error');
+            return;
         }
-        
-        this.db.recordAdjustment(itemName, size, adjustmentQty, reason, notes);
-        this.closeAdjustmentModal();
-        this.render();
-    }
-
-    quickAdjust(itemName, size, price) {
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
-        modal.innerHTML = Components.renderQuickAdjustModal.call(this, itemName, size, price);
-        document.body.appendChild(modal);
-        
-        // Gérer la soumission
-        document.getElementById('quick-adjustment-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.processQuickAdjustment();
-        });
-    }
-
-    closeQuickAdjustModal() {
-        const modal = document.querySelector('.fixed.inset-0');
-        if (modal) modal.remove();
-    }
-
-    processQuickAdjustment() {
-        const itemName = document.getElementById('quick-adjust-item').value;
-        const size = document.getElementById('quick-adjust-size').value;
-        const type = document.getElementById('quick-adjust-type').value;
-        const quantity = parseInt(document.getElementById('quick-adjust-quantity').value);
-        const reason = document.getElementById('quick-adjust-reason').value;
         
         const item = this.db.data.inventory.find(i => i.name === itemName);
         const currentStock = item.sizes[size];
@@ -575,177 +477,143 @@ XGuard Réception</textarea>
         }
         
         this.db.recordAdjustment(itemName, size, adjustmentQty, reason, '');
-        this.closeQuickAdjustModal();
+        showNotification('Stock ajusté avec succès', 'success');
+        this.closeModal();
         this.render();
     }
 
-    // ==================== NOUVELLES MÉTHODES POUR PDF ====================
-    
-    // Générer le PDF d'une transaction
-    generateTransactionPDF(transaction) {
-        const employee = this.db.getEmployee(transaction.employeeId);
-        if (!employee) return;
-
-        // Créer une nouvelle instance jsPDF
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-
-        // En-tête
-        doc.setFontSize(20);
-        doc.text('XGuard - Reçu d\'uniformes', 105, 20, { align: 'center' });
+    // ==================== MÉTHODES MODALES ====================
+    showSignatureLinkModal(transaction) {
+        const employee = this.db.getEmployee(this.currentEmployee);
+        const linkUrl = `${window.location.origin}${window.location.pathname}?token=${transaction.linkToken}`;
         
-        // Ligne de séparation
-        doc.setLineWidth(0.5);
-        doc.line(20, 25, 190, 25);
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full animate-fade-in">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">Lien généré avec succès!</h3>
+                    <p class="text-gray-600">Envoyez ce lien à ${employee.name}</p>
+                </div>
+                
+                <div class="bg-gray-50 rounded-xl p-4 mb-6">
+                    <p class="text-sm text-gray-600 mb-3">Lien de signature:</p>
+                    <div class="flex items-center gap-2">
+                        <input type="text" value="${linkUrl}" readonly 
+                            class="flex-1 px-3 py-2 bg-white border rounded-lg text-sm" id="modal-link-input">
+                        <button onclick="app.copyLink('${linkUrl}')" 
+                            class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition">
+                            Copier
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-50 rounded-xl p-4 mb-6">
+                    <p class="text-sm font-semibold mb-2">Message SMS suggéré:</p>
+                    <textarea readonly rows="6" class="w-full p-3 bg-white rounded-lg text-xs border">Bonjour ${employee.name},
 
-        // Informations de l'employé
-        doc.setFontSize(12);
-        doc.text('Informations de l\'employé:', 20, 35);
-        doc.setFontSize(10);
-        doc.text(`Nom: ${employee.name}`, 20, 45);
-        doc.text(`Code: ${employee.id}`, 20, 52);
-        doc.text(`Téléphone: ${employee.phone}`, 20, 59);
-        
-        // Date de transaction
-        doc.text(`Date: ${new Date(transaction.createdAt).toLocaleDateString('fr-CA')}`, 120, 45);
-        doc.text(`Type: ${this.getTransactionTypeText(transaction.type)}`, 120, 52);
+Vos uniformes XGuard sont prêts. Veuillez confirmer la réception en signant sur ce lien:
 
-        // Articles
-        doc.setFontSize(12);
-        doc.text('Articles reçus:', 20, 75);
-        
-        let y = 85;
-        doc.setFontSize(10);
-        transaction.items.forEach(item => {
-            doc.text(`${item.quantity}x ${item.name} - Taille ${item.size} - $${item.price * item.quantity}`, 25, y);
-            y += 7;
+${linkUrl}
+
+Merci,
+XGuard Réception</textarea>
+                </div>
+                
+                <button onclick="app.closeModal(); app.navigateTo('home');" 
+                    class="w-full bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition font-medium">
+                    Fermer et terminer
+                </button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    closeModal() {
+        const modal = document.querySelector('.fixed.inset-0');
+        if (modal) modal.remove();
+    }
+
+    // ==================== MÉTHODES UTILITAIRES ====================
+    copyLink(url) {
+        navigator.clipboard.writeText(url).then(() => {
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = 'Copié!';
+            btn.classList.add('bg-green-600');
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.classList.remove('bg-green-600');
+            }, 2000);
+        }).catch(() => {
+            // Fallback pour navigateurs plus anciens
+            const input = document.createElement('input');
+            input.value = url;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            showNotification('Lien copié!', 'success');
         });
+    }
 
-        // Total
-        const total = transaction.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        doc.setFontSize(12);
-        doc.text(`Total: $${total}`, 20, y + 10);
-
-        // Conditions
-        y += 25;
-        doc.setFontSize(10);
-        doc.text('CONDITIONS:', 20, y);
-        doc.setFontSize(8);
-        const conditions = [
-            '- Les uniformes restent la propriété de XGuard',
-            '- En cas de fin d\'emploi, les uniformes doivent être retournés dans les 5 jours',
-            `- Si non retournés, un montant de $${total} sera retenu sur la dernière paie`
-        ];
+    // ==================== EXPORTS DE DONNÉES ====================
+    downloadEmployeeReport() {
+        const employees = this.db.data.employees.filter(e => e.active);
+        let csv = 'Code employé,Nom,Téléphone,Email,Statut,Article,Taille,Quantité,Prix unitaire,Valeur totale\n';
         
-        conditions.forEach((condition, index) => {
-            doc.text(condition, 25, y + 10 + (index * 6));
-        });
-
-        // Signature si disponible
-        if (transaction.signature && transaction.signature.data) {
-            y += 40;
-            doc.text('Signature de l\'employé:', 20, y);
-            
-            // Ajouter l'image de la signature
-            try {
-                doc.addImage(transaction.signature.data, 'PNG', 20, y + 5, 60, 30);
-                doc.text(`Signé le: ${new Date(transaction.signature.signedAt).toLocaleString('fr-CA')}`, 20, y + 40);
-            } catch (e) {
-                console.error('Erreur lors de l\'ajout de la signature:', e);
+        employees.forEach(employee => {
+            const balance = this.db.getEmployeeBalance(employee.id);
+            const status = employee.active ? 'Actif' : 'Inactif';
+            if (balance.length === 0) {
+                csv += `"${employee.id}","${employee.name}","${employee.phone}","${employee.email || ''}","${status}","","","0","0","0"\n`;
+            } else {
+                balance.forEach(item => {
+                    csv += `"${employee.id}","${employee.name}","${employee.phone}","${employee.email || ''}","${status}","${item.name}","${item.size}","${item.quantity}","${item.price}","${item.quantity * item.price}"\n`;
+                });
             }
-        }
-
-        // Pied de page
-        doc.setFontSize(8);
-        doc.text('Document généré automatiquement par XGuard', 105, 280, { align: 'center' });
-        doc.text(`ID Transaction: ${transaction.id}`, 105, 285, { align: 'center' });
-
-        return doc;
-    }
-
-    // Télécharger le PDF
-    downloadTransactionPDF(transactionId) {
-        const transaction = this.db.data.transactions.find(t => t.id === transactionId);
-        if (!transaction) return;
-
-        const doc = this.generateTransactionPDF(transaction);
-        const employee = this.db.getEmployee(transaction.employeeId);
-        
-        // Nom du fichier
-        const filename = `XGuard_${employee.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-        
-        // Télécharger
-        doc.save(filename);
-    }
-
-    // Afficher le PDF dans une nouvelle fenêtre
-    viewTransactionPDF(transactionId) {
-        const transaction = this.db.data.transactions.find(t => t.id === transactionId);
-        if (!transaction) return;
-
-        const doc = this.generateTransactionPDF(transaction);
-        
-        // Ouvrir dans une nouvelle fenêtre
-        const pdfDataUri = doc.output('datauristring');
-        const newWindow = window.open();
-        newWindow.document.write('<iframe width="100%" height="100%" src="' + pdfDataUri + '"></iframe>');
-    }
-
-    // Export de toutes les signatures
-    exportAllSignatures() {
-        const signedTransactions = this.db.getSignedTransactions();
-        
-        if (signedTransactions.length === 0) {
-            alert('Aucune transaction signée à exporter');
-            return;
-        }
-
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        doc.setFontSize(16);
-        doc.text('XGuard - Rapport des Signatures', 105, 20, { align: 'center' });
-        doc.setFontSize(10);
-        doc.text(`Généré le: ${new Date().toLocaleDateString('fr-CA')}`, 105, 30, { align: 'center' });
-        
-        let y = 45;
-        
-        signedTransactions.forEach((transaction, index) => {
-            if (y > 250) {
-                doc.addPage();
-                y = 20;
-            }
-            
-            const employee = this.db.getEmployee(transaction.employeeId);
-            const total = transaction.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            
-            doc.setFontSize(12);
-            doc.text(`${index + 1}. ${employee ? employee.name : 'Employé supprimé'}`, 20, y);
-            doc.setFontSize(10);
-            doc.text(`Date: ${new Date(transaction.signedAt).toLocaleDateString('fr-CA')}`, 30, y + 7);
-            doc.text(`Montant: $${total}`, 30, y + 14);
-            doc.text(`ID: ${transaction.id}`, 30, y + 21);
-            
-            y += 30;
         });
         
-        doc.save(`XGuard_Signatures_${new Date().toISOString().split('T')[0]}.pdf`);
+        downloadCSV(csv, `xguard_employes_${formatDate(new Date())}.csv`);
     }
 
-    // Helper pour obtenir le texte du type de transaction
-    getTransactionTypeText(type) {
-        switch(type) {
-            case 'attribution': return 'Attribution';
-            case 'retour': return 'Retour';
-            case 'ajout': return 'Ajout';
-            default: return type;
-        }
+    downloadInventoryReport() {
+        let csv = 'Article,Catégorie,Taille,Stock actuel,Prix unitaire,Valeur totale,Statut\n';
+        
+        this.db.data.inventory.forEach(item => {
+            Object.entries(item.sizes).forEach(([size, stock]) => {
+                const status = stock === 0 ? 'Rupture' : stock < 10 ? 'Faible' : 'OK';
+                csv += `"${item.name}","${item.category || 'Non catégorisé'}","${size}","${stock}","${item.price}","${stock * item.price}","${status}"\n`;
+            });
+        });
+        
+        downloadCSV(csv, `xguard_inventaire_${formatDate(new Date())}.csv`);
+    }
+
+    downloadMovementsReport() {
+        let csv = 'Date,Type,Article,Taille,Quantité,Raison,Fournisseur,Coût,Notes,Créé par\n';
+        
+        const movements = this.db.getInventoryMovements(999999);
+        movements.forEach(m => {
+            const typeText = m.type === 'purchase' ? 'Achat' : 
+                           m.type === 'adjustment' ? 'Ajustement' : 
+                           m.type === 'attribution' ? 'Attribution' : 
+                           m.type === 'retour' ? 'Retour' : m.type;
+            
+            csv += `"${formatDate(new Date(m.date))}","${typeText}","${m.item}","${m.size}","${m.quantity}","${m.reason || ''}","${m.supplier || ''}","${m.cost || ''}","${m.notes || ''}","${m.createdBy}"\n`;
+        });
+        
+        downloadCSV(csv, `xguard_mouvements_${formatDate(new Date())}.csv`);
     }
 
     // ==================== EVENT HANDLERS ====================
-    
     attachHomeEvents() {
-        // Animation des cartes au hover est gérée par CSS
+        // Les animations sont gérées par CSS
     }
 
     attachNewEmployeeEvents() {
@@ -762,10 +630,14 @@ XGuard Réception</textarea>
                 notes: document.getElementById('emp-notes').value
             };
 
-            const newEmp = this.db.addEmployee(employee);
-            this.currentEmployee = newEmp.id;
-            this.currentView = 'transaction';
-            this.render();
+            try {
+                const newEmp = this.db.addEmployee(employee);
+                this.currentEmployee = newEmp.id;
+                showNotification('Employé créé avec succès', 'success');
+                this.navigateTo('transaction', { employee: newEmp.id });
+            } catch (error) {
+                showNotification('Erreur lors de la création de l\'employé', 'error');
+            }
         });
     }
 
@@ -773,11 +645,14 @@ XGuard Réception</textarea>
         const searchInput = document.getElementById('employee-search');
         if (searchInput) {
             searchInput.focus();
+            searchInput.addEventListener('input', (e) => {
+                this.filterEmployees(e.target.value);
+            });
         }
     }
 
     attachTransactionEvents() {
-        // Les events sont inline dans le HTML
+        // Les événements inline sont déjà dans le HTML généré
     }
 
     attachSignatureEvents() {
@@ -789,7 +664,7 @@ XGuard Réception</textarea>
             penColor: 'rgb(0, 0, 0)'
         });
 
-        // Redimensionner
+        // Redimensionner le canvas
         function resizeCanvas() {
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
             canvas.width = canvas.offsetWidth * ratio;
@@ -799,7 +674,7 @@ XGuard Réception</textarea>
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
-        // Boutons
+        // Bouton effacer
         const clearBtn = document.getElementById('clear-signature');
         if (clearBtn) {
             clearBtn.addEventListener('click', () => {
@@ -807,35 +682,190 @@ XGuard Réception</textarea>
             });
         }
 
+        // Bouton soumettre
         const submitBtn = document.getElementById('submit-signature');
         if (submitBtn) {
             submitBtn.addEventListener('click', () => {
                 if (signaturePad.isEmpty()) {
-                    alert('Veuillez signer avant de soumettre');
+                    showNotification('Veuillez signer avant de soumettre', 'warning');
                     return;
                 }
 
                 const signature = {
                     data: signaturePad.toDataURL(),
-                    timestamp: new Date().toISOString(),
-                    ipAddress: 'N/A', // Vous pouvez obtenir l'IP réelle si nécessaire
-                    userAgent: navigator.userAgent
+                    timestamp: new Date().toISOString()
                 };
 
                 const transaction = this.db.signTransaction(this.currentToken, signature);
                 
                 if (transaction) {
-                    const employee = this.db.getEmployee(transaction.employeeId);
-                    
-                    // Utiliser la nouvelle méthode avec PDF
-                    const app = document.getElementById('app');
-                    app.innerHTML = Components.renderSuccessMessageWithPDF.call(this, employee, transaction);
+                    document.getElementById('app').innerHTML = renderSuccessSignature.call(this, transaction);
+                } else {
+                    showNotification('Erreur lors de la signature', 'error');
                 }
             });
         }
     }
 
+    attachEmployeeDetailsEvents() {
+        // Événements pour les boutons d'action
+        const actionButtons = document.querySelectorAll('[data-action]');
+        actionButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = e.target.dataset.action;
+                const employeeId = e.target.dataset.employeeId;
+                
+                switch(action) {
+                    case 'deactivate':
+                        this.deactivateEmployee(employeeId);
+                        break;
+                    case 'reactivate':
+                        this.reactivateEmployee(employeeId);
+                        break;
+                }
+            });
+        });
+    }
+
+    attachEmployeesListEvents() {
+        // Barre de recherche
+        const searchInput = document.getElementById('employees-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.filterEmployees(e.target.value);
+            });
+        }
+    }
+
+    attachTransactionsListEvents() {
+        // Filtres de transactions
+        const filterButtons = document.querySelectorAll('[data-filter]');
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const filter = e.target.dataset.filter;
+                this.filterTransactions(filter);
+            });
+        });
+    }
+
+    attachPendingSignaturesEvents() {
+        // Boutons de copie de lien
+        const copyButtons = document.querySelectorAll('[data-copy-link]');
+        copyButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const link = e.target.dataset.copyLink;
+                this.copyLink(link);
+            });
+        });
+    }
+
     attachInventoryManagementEvents() {
-        // Les événements sont gérés inline ou dans les méthodes de modal
+        // Filtres de catégorie
+        const categoryButtons = document.querySelectorAll('[data-category]');
+        categoryButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const category = e.target.dataset.category;
+                this.filterInventoryByCategory(category);
+            });
+        });
+
+        // Boutons d'édition
+        const editButtons = document.querySelectorAll('[data-edit-item]');
+        editButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const itemId = e.target.dataset.editItem;
+                this.editInventoryItem(itemId);
+            });
+        });
+    }
+
+    attachNewInventoryItemEvents() {
+        const form = document.getElementById('new-inventory-form');
+        if (!form) return;
+        
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const item = {
+                name: document.getElementById('item-name').value,
+                category: document.getElementById('item-category').value,
+                price: parseFloat(document.getElementById('item-price').value),
+                sizes: {}
+            };
+            
+            // Récupérer les tailles et quantités
+            const sizeInputs = document.querySelectorAll('[data-size-input]');
+            sizeInputs.forEach(input => {
+                const size = input.dataset.size;
+                const quantity = parseInt(input.value) || 0;
+                if (quantity > 0) {
+                    item.sizes[size] = quantity;
+                }
+            });
+            
+            if (Object.keys(item.sizes).length === 0) {
+                showNotification('Veuillez définir au moins une taille avec quantité', 'warning');
+                return;
+            }
+            
+            try {
+                this.db.addInventoryItem(item);
+                showNotification('Article ajouté avec succès', 'success');
+                this.navigateTo('inventoryManagement');
+            } catch (error) {
+                showNotification('Erreur lors de l\'ajout de l\'article', 'error');
+            }
+        });
+    }
+
+    // ==================== RACCOURCIS CLAVIER ====================
+    initKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + H = Accueil
+            if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+                e.preventDefault();
+                this.navigateTo('home');
+            }
+            
+            // Ctrl/Cmd + E = Employés
+            if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                e.preventDefault();
+                this.navigateTo('employees');
+            }
+            
+            // Ctrl/Cmd + I = Inventaire
+            if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+                e.preventDefault();
+                this.navigateTo('inventoryManagement');
+            }
+            
+            // Ctrl/Cmd + T = Transactions
+            if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+                e.preventDefault();
+                this.navigateTo('transactions');
+            }
+            
+            // ESC = Fermer modal
+            if (e.key === 'Escape') {
+                this.closeModal();
+            }
+        });
     }
 }
+
+// ==================== INITIALISATION ====================
+// Attendre que le DOM soit chargé
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        window.app = new XGuardApp();
+    });
+} else {
+    // DOM déjà chargé
+    window.app = new XGuardApp();
+}
+
+// Exposer certaines méthodes globalement pour les événements inline
+window.app = null; // Sera défini lors de l'initialisation
+
+// Export pour les tests
+export { XGuardApp };
