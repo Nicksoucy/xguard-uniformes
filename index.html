@@ -4,23 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XGuard - Système de Gestion des Uniformes</title>
-    
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- SignaturePad -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
-    
-    <!-- Styles personnalisés -->
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="bg-gray-50">
-    <!-- Application -->
     <div id="app"></div>
-
-    <!-- Chargement de l'application -->
+    
+    <!-- Utiliser Skypack pour importer les modules ES6 -->
     <script type="module">
-        import { XGuardApp } from './js/app.js';
+        // Skypack permet d'utiliser les modules ES6 sur GitHub Pages
+        import { XGuardApp } from 'https://cdn.skypack.dev/pin/xguard-uniformes@v1.0.0/mode=imports/optimized/app.js';
         window.app = new XGuardApp();
     </script>
 </body>
