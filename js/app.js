@@ -1,14 +1,13 @@
 // ==================== APPLICATION PRINCIPALE XGUARD ====================
-// Imports des modules
 import { Database } from './database.js';
-import { renderHome, renderInventory, renderLowStock, renderError, renderInventoryManagement, renderNewInventoryItem } from './app-inventory.js';
+import { renderHome, renderInventory, renderLowStock, renderInventoryManagement, renderNewInventoryItem } from './app-inventory.js';
 import { renderEmployeesList, renderSelectEmployee, renderNewEmployee, renderEmployeeDetails } from './app-employees.js';
 import { renderTransaction, renderTransactionsList, renderPendingSignatures, renderSignature, renderSuccessSignature } from './app-transactions.js';
-import { downloadCSV, formatDate, formatCurrency, showNotification } from './utils.js';
-import { renderHeader, renderModal, renderLoadingSpinner } from './components.js';
+import { Components } from './components.js';
+import { showNotification, copyLink, downloadCSV, formatDate, formatCurrency } from './utils.js';
 
 // ==================== CLASSE PRINCIPALE ====================
-class XGuardApp {
+export class XGuardApp {
     constructor() {
         // Initialisation de la base de données
         this.db = new Database();
@@ -21,6 +20,7 @@ class XGuardApp {
         this.showInactive = false;
         this.currentCategory = 'all';
         this.editingItem = null;
+        this.currentToken = null;
         
         // Vérifier si on a un token de signature dans l'URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -29,9 +29,6 @@ class XGuardApp {
             this.currentToken = token;
             this.currentView = 'signature';
         }
-
-        // Initialiser la navigation
-        this.initNavigation();
         
         // Initialiser l'application
         this.init();
@@ -40,11 +37,7 @@ class XGuardApp {
     // ==================== INITIALISATION ====================
     async init() {
         try {
-            // Afficher le spinner de chargement
-            document.getElementById('app').innerHTML = renderLoadingSpinner();
-            
-            // Charger l'inventaire depuis le JSON si nécessaire
-            await this.db.loadInventoryFromJSON();
+            console.log('🚀 Initialisation de XGuard...');
             
             // Rendre la vue initiale
             this.render();
@@ -52,9 +45,11 @@ class XGuardApp {
             // Initialiser les raccourcis clavier
             this.initKeyboardShortcuts();
             
+            console.log('✅ XGuard initialisé avec succès');
+            
         } catch (error) {
-            console.error('Erreur lors de l\'initialisation:', error);
-            document.getElementById('app').innerHTML = renderError(
+            console.error('❌ Erreur lors de l\'initialisation:', error);
+            document.getElementById('app').innerHTML = Components.renderError(
                 'Erreur de chargement',
                 'Impossible de charger l\'application. Veuillez rafraîchir la page.'
             );
@@ -62,41 +57,12 @@ class XGuardApp {
     }
 
     // ==================== NAVIGATION ====================
-    initNavigation() {
-        // Gérer l'historique du navigateur
-        window.history.replaceState(
-            { view: this.currentView, employee: this.currentEmployee },
-            '',
-            window.location.href
-        );
-        
-        // Écouter les changements d'historique
-        window.addEventListener('popstate', (event) => {
-            if (event.state) {
-                this.currentView = event.state.view || 'home';
-                this.currentEmployee = event.state.employee || null;
-                this.render();
-            }
-        });
-    }
-
     navigateTo(view, params = {}) {
         this.currentView = view;
         
         // Mettre à jour les paramètres
         if (params.employee) this.currentEmployee = params.employee;
         if (params.type) this.transactionType = params.type;
-        
-        // Mettre à jour l'URL
-        const url = this.currentView === 'signature' && this.currentToken 
-            ? `?token=${this.currentToken}` 
-            : window.location.pathname;
-            
-        window.history.pushState(
-            { view: this.currentView, employee: this.currentEmployee },
-            '',
-            url
-        );
         
         this.render();
     }
@@ -109,7 +75,6 @@ class XGuardApp {
             switch(this.currentView) {
                 case 'home':
                     app.innerHTML = renderHome.call(this);
-                    this.attachHomeEvents();
                     break;
                     
                 case 'newEmployee':
@@ -124,7 +89,6 @@ class XGuardApp {
                     
                 case 'transaction':
                     app.innerHTML = renderTransaction.call(this);
-                    this.attachTransactionEvents();
                     break;
                     
                 case 'signature':
@@ -134,22 +98,18 @@ class XGuardApp {
                     
                 case 'employeeDetails':
                     app.innerHTML = renderEmployeeDetails.call(this);
-                    this.attachEmployeeDetailsEvents();
                     break;
                     
                 case 'employees':
                     app.innerHTML = renderEmployeesList.call(this);
-                    this.attachEmployeesListEvents();
                     break;
                     
                 case 'transactions':
                     app.innerHTML = renderTransactionsList.call(this);
-                    this.attachTransactionsListEvents();
                     break;
                     
                 case 'pendingSignatures':
                     app.innerHTML = renderPendingSignatures.call(this);
-                    this.attachPendingSignaturesEvents();
                     break;
                     
                 case 'lowStock':
@@ -162,7 +122,6 @@ class XGuardApp {
                     
                 case 'inventoryManagement':
                     app.innerHTML = renderInventoryManagement.call(this);
-                    this.attachInventoryManagementEvents();
                     break;
                     
                 case 'newInventoryItem':
@@ -171,11 +130,11 @@ class XGuardApp {
                     break;
                     
                 default:
-                    app.innerHTML = renderError('Page introuvable', 'Cette page n\'existe pas.');
+                    app.innerHTML = Components.renderError('Page introuvable', 'Cette page n\'existe pas.');
             }
         } catch (error) {
             console.error('Erreur lors du rendu:', error);
-            app.innerHTML = renderError('Erreur', 'Une erreur est survenue lors de l\'affichage de la page.');
+            app.innerHTML = Components.renderError('Erreur', 'Une erreur est survenue lors de l\'affichage de la page.');
         }
     }
 
@@ -216,7 +175,6 @@ class XGuardApp {
             );
 
             if (this.transactionType === 'retour') {
-                // Pour un retour, pas besoin de signature
                 showNotification('Retour enregistré avec succès!', 'success');
                 this.navigateTo('home');
             } else {
@@ -333,6 +291,22 @@ class XGuardApp {
         }).join('');
     }
 
+    filterEmployeeList(query) {
+        const cards = document.querySelectorAll('.employee-card');
+        const searchQuery = query.toLowerCase();
+        
+        cards.forEach(card => {
+            const name = card.dataset.employeeName;
+            const id = card.dataset.employeeId;
+            
+            if (name.includes(searchQuery) || id.includes(searchQuery)) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
     deactivateEmployee(employeeId) {
         if (confirm('Êtes-vous sûr de vouloir désactiver cet employé?')) {
             this.db.updateEmployee(employeeId, { active: false });
@@ -353,103 +327,99 @@ class XGuardApp {
         this.render();
     }
 
-    editInventoryItem(itemId) {
-        this.editingItem = itemId;
-        this.render();
-    }
+    updateSizeFields(type) {
+        const container = document.getElementById('size-fields');
+        if (!container) return;
 
-    saveInventoryItem(itemId) {
-        const item = this.db.data.inventory.find(i => i.id === itemId);
-        if (!item) return;
+        const sizePresets = {
+            standard: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'],
+            unique: ['Unique'],
+            custom: []
+        };
 
-        const nameInput = document.getElementById(`edit-name-${itemId}`);
-        const priceInput = document.getElementById(`edit-price-${itemId}`);
-        
-        if (nameInput && priceInput) {
-            const newName = nameInput.value.trim();
-            const newPrice = parseFloat(priceInput.value);
-            
-            if (newName && newPrice > 0) {
-                this.db.updateInventoryItem(itemId, { name: newName, price: newPrice });
-                showNotification('Article mis à jour', 'success');
-                this.editingItem = null;
-                this.render();
-            } else {
-                showNotification('Veuillez remplir tous les champs correctement', 'error');
-            }
-        }
-    }
-
-    cancelEditInventoryItem() {
-        this.editingItem = null;
-        this.render();
-    }
-
-    deleteInventoryItem(itemId) {
-        if (confirm('Êtes-vous sûr de vouloir supprimer cet article?')) {
-            const result = this.db.deleteInventoryItem(itemId);
-            if (result.success) {
-                showNotification('Article supprimé', 'success');
-                this.render();
-            } else {
-                showNotification(result.message, 'error');
-            }
+        if (type === 'custom') {
+            container.innerHTML = `
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tailles personnalisées</label>
+                <div id="custom-sizes-container" class="space-y-2">
+                    <div class="flex gap-2">
+                        <input type="text" placeholder="Nom de la taille" class="flex-1 px-3 py-2 border rounded-lg">
+                        <input type="number" placeholder="Quantité" min="0" class="w-24 px-3 py-2 border rounded-lg">
+                        <button type="button" onclick="app.addCustomSize()" 
+                            class="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                            +
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <label class="block text-sm font-medium text-gray-700 mb-2">Quantités initiales</label>
+                <div class="grid ${type === 'unique' ? 'grid-cols-1' : 'grid-cols-3 sm:grid-cols-4'} gap-3">
+                    ${sizePresets[type].map(size => `
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">${size}</label>
+                            <input type="number" 
+                                data-size-input data-size="${size}"
+                                min="0" value="0"
+                                class="w-full px-2 py-1 border rounded focus:ring-2 focus:ring-purple-500">
+                        </div>
+                    `).join('')}
+                </div>
+            `;
         }
     }
 
     adjustInventoryStock(itemName, size) {
-        const modal = renderModal({
-            title: 'Ajuster le stock',
-            content: this.renderAdjustStockForm(itemName, size),
-            onClose: () => this.closeModal(),
-            onSubmit: () => this.processStockAdjustment()
-        });
-        
-        document.body.appendChild(modal);
-    }
-
-    renderAdjustStockForm(itemName, size) {
         const item = this.db.data.inventory.find(i => i.name === itemName);
         const currentStock = item.sizes[size];
         
-        return `
-            <form id="adjust-stock-form">
-                <input type="hidden" id="adjust-item" value="${itemName}">
-                <input type="hidden" id="adjust-size" value="${size}">
-                
-                <div class="mb-4">
-                    <p class="text-sm text-gray-600">Article: <strong>${itemName}</strong></p>
-                    <p class="text-sm text-gray-600">Taille: <strong>${size}</strong></p>
-                    <p class="text-sm text-gray-600">Stock actuel: <strong>${currentStock}</strong></p>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">Type d'ajustement</label>
-                    <select id="adjust-type" class="w-full p-2 border rounded-lg">
-                        <option value="set">Définir le stock à</option>
-                        <option value="add">Ajouter au stock</option>
-                        <option value="remove">Retirer du stock</option>
-                    </select>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">Quantité</label>
-                    <input type="number" id="adjust-quantity" min="0" required
-                        class="w-full p-2 border rounded-lg">
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">Raison</label>
-                    <select id="adjust-reason" class="w-full p-2 border rounded-lg">
-                        <option value="inventory">Inventaire physique</option>
-                        <option value="damage">Articles endommagés</option>
-                        <option value="loss">Perte</option>
-                        <option value="correction">Correction d'erreur</option>
-                        <option value="other">Autre</option>
-                    </select>
-                </div>
-            </form>
-        `;
+        const modal = Components.renderModal({
+            title: 'Ajuster le stock',
+            content: `
+                <form id="adjust-stock-form">
+                    <input type="hidden" id="adjust-item" value="${itemName}">
+                    <input type="hidden" id="adjust-size" value="${size}">
+                    
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600">Article: <strong>${itemName}</strong></p>
+                        <p class="text-sm text-gray-600">Taille: <strong>${size}</strong></p>
+                        <p class="text-sm text-gray-600">Stock actuel: <strong>${currentStock}</strong></p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Type d'ajustement</label>
+                        <select id="adjust-type" class="w-full p-2 border rounded-lg">
+                            <option value="set">Définir le stock à</option>
+                            <option value="add">Ajouter au stock</option>
+                            <option value="remove">Retirer du stock</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Quantité</label>
+                        <input type="number" id="adjust-quantity" min="0" required
+                            class="w-full p-2 border rounded-lg">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Raison</label>
+                        <select id="adjust-reason" class="w-full p-2 border rounded-lg">
+                            <option value="inventory">Inventaire physique</option>
+                            <option value="damage">Articles endommagés</option>
+                            <option value="loss">Perte</option>
+                            <option value="correction">Correction d'erreur</option>
+                            <option value="other">Autre</option>
+                        </select>
+                    </div>
+                </form>
+            `,
+            onClose: 'app.closeModal()',
+            onSubmit: 'app.processStockAdjustment()'
+        });
+        
+        const modalDiv = document.createElement('div');
+        modalDiv.innerHTML = modal;
+        document.body.appendChild(modalDiv.firstElementChild);
     }
 
     processStockAdjustment() {
@@ -541,25 +511,7 @@ XGuard Réception</textarea>
 
     // ==================== MÉTHODES UTILITAIRES ====================
     copyLink(url) {
-        navigator.clipboard.writeText(url).then(() => {
-            const btn = event.target;
-            const originalText = btn.textContent;
-            btn.textContent = 'Copié!';
-            btn.classList.add('bg-green-600');
-            setTimeout(() => {
-                btn.textContent = originalText;
-                btn.classList.remove('bg-green-600');
-            }, 2000);
-        }).catch(() => {
-            // Fallback pour navigateurs plus anciens
-            const input = document.createElement('input');
-            input.value = url;
-            document.body.appendChild(input);
-            input.select();
-            document.execCommand('copy');
-            document.body.removeChild(input);
-            showNotification('Lien copié!', 'success');
-        });
+        copyLink(url);
     }
 
     // ==================== EXPORTS DE DONNÉES ====================
@@ -612,10 +564,6 @@ XGuard Réception</textarea>
     }
 
     // ==================== EVENT HANDLERS ====================
-    attachHomeEvents() {
-        // Les animations sont gérées par CSS
-    }
-
     attachNewEmployeeEvents() {
         const form = document.getElementById('new-employee-form');
         if (!form) return;
@@ -649,10 +597,6 @@ XGuard Réception</textarea>
                 this.filterEmployees(e.target.value);
             });
         }
-    }
-
-    attachTransactionEvents() {
-        // Les événements inline sont déjà dans le HTML généré
     }
 
     attachSignatureEvents() {
@@ -705,78 +649,6 @@ XGuard Réception</textarea>
                 }
             });
         }
-    }
-
-    attachEmployeeDetailsEvents() {
-        // Événements pour les boutons d'action
-        const actionButtons = document.querySelectorAll('[data-action]');
-        actionButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const action = e.target.dataset.action;
-                const employeeId = e.target.dataset.employeeId;
-                
-                switch(action) {
-                    case 'deactivate':
-                        this.deactivateEmployee(employeeId);
-                        break;
-                    case 'reactivate':
-                        this.reactivateEmployee(employeeId);
-                        break;
-                }
-            });
-        });
-    }
-
-    attachEmployeesListEvents() {
-        // Barre de recherche
-        const searchInput = document.getElementById('employees-search');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                this.filterEmployees(e.target.value);
-            });
-        }
-    }
-
-    attachTransactionsListEvents() {
-        // Filtres de transactions
-        const filterButtons = document.querySelectorAll('[data-filter]');
-        filterButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const filter = e.target.dataset.filter;
-                this.filterTransactions(filter);
-            });
-        });
-    }
-
-    attachPendingSignaturesEvents() {
-        // Boutons de copie de lien
-        const copyButtons = document.querySelectorAll('[data-copy-link]');
-        copyButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const link = e.target.dataset.copyLink;
-                this.copyLink(link);
-            });
-        });
-    }
-
-    attachInventoryManagementEvents() {
-        // Filtres de catégorie
-        const categoryButtons = document.querySelectorAll('[data-category]');
-        categoryButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const category = e.target.dataset.category;
-                this.filterInventoryByCategory(category);
-            });
-        });
-
-        // Boutons d'édition
-        const editButtons = document.querySelectorAll('[data-edit-item]');
-        editButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const itemId = e.target.dataset.editItem;
-                this.editInventoryItem(itemId);
-            });
-        });
     }
 
     attachNewInventoryItemEvents() {
@@ -852,20 +724,3 @@ XGuard Réception</textarea>
         });
     }
 }
-
-// ==================== INITIALISATION ====================
-// Attendre que le DOM soit chargé
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        window.app = new XGuardApp();
-    });
-} else {
-    // DOM déjà chargé
-    window.app = new XGuardApp();
-}
-
-// Exposer certaines méthodes globalement pour les événements inline
-window.app = null; // Sera défini lors de l'initialisation
-
-// Export pour les tests
-export { XGuardApp };
