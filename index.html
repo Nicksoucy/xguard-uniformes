@@ -1142,9 +1142,20 @@
                                         Télécharger CSV
                                     </button>
                                 </div>
+                                
+                                <!-- Barre de recherche -->
+                                <div class="relative">
+                                    <svg class="absolute left-3 top-3 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                    <input type="text" id="employee-list-search" 
+                                        placeholder="Rechercher un employé..." 
+                                        class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        oninput="app.filterEmployeeList(this.value)">
+                                </div>
                             </div>
 
-                            <div class="grid md:grid-cols-2 gap-6">
+                            <div id="employee-cards-list" class="grid md:grid-cols-2 gap-6">
                                 ${(this.showInactive ? inactiveEmployees : employees).map(emp => {
                                     const balance = this.db.getEmployeeBalance(emp.id);
                                     const totalItems = balance.reduce((sum, item) => sum + item.quantity, 0);
@@ -1157,7 +1168,7 @@
                                         const itemsHtml = balance.map(item => 
                                             `<div class="flex justify-between bg-gray-50 rounded px-2 py-1">
                                                 <span>${item.quantity}× ${item.name} (${item.size})</span>
-                                                <span class="text-gray-600">$${item.price * item.quantity}</span>
+                                                <span class="text-gray-600">${item.price * item.quantity}</span>
                                             </div>`
                                         ).join('');
                                         
@@ -1174,7 +1185,9 @@
                                     }
                                     
                                     return `
-                                        <div class="bg-white rounded-xl shadow-lg p-6 hover-lift animate-fade-in ${empClass}">
+                                        <div class="employee-card bg-white rounded-xl shadow-lg p-6 hover-lift animate-fade-in ${empClass}" 
+                                             data-employee-name="${emp.name.toLowerCase()}" 
+                                             data-employee-id="${emp.id.toLowerCase()}">
                                             <div class="flex justify-between items-start mb-4">
                                                 <div>
                                                     <h3 class="font-semibold text-lg ${textClass}">${emp.name}</h3>
@@ -1185,7 +1198,7 @@
                                                 <div class="text-right">
                                                     <p class="text-2xl font-bold ${!emp.active ? 'text-gray-500' : 'text-gray-800'}">${totalItems}</p>
                                                     <p class="text-sm text-gray-500">articles</p>
-                                                    <p class="text-sm font-semibold ${!emp.active ? 'text-gray-500' : 'text-green-600'}">$${totalValue}</p>
+                                                    <p class="text-sm font-semibold ${!emp.active ? 'text-gray-500' : 'text-green-600'}">${totalValue}</p>
                                                 </div>
                                             </div>
                                             ${balanceHtml}
