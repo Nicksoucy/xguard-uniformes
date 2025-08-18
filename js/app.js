@@ -67,74 +67,162 @@ export class XGuardApp {
         this.render();
     }
 
-   // ==================== RENDU PRINCIPAL ====================
+// ==================== RENDU PRINCIPAL ====================
 render() {
     const app = document.getElementById('app');
-    
+
     try {
-        switch(this.currentView) {
+        switch (this.currentView) {
             case 'home':
                 app.innerHTML = renderHome.call(this);
                 break;
-                
+
             case 'newEmployee':
                 app.innerHTML = renderNewEmployee.call(this);
                 this.attachNewEmployeeEvents();
                 break;
-                
+
             case 'selectEmployee':
                 app.innerHTML = renderSelectEmployee.call(this);
                 this.attachSelectEmployeeEvents();
                 break;
-                
+
             case 'transaction':
                 app.innerHTML = renderTransaction.call(this);
                 break;
-                
+
             case 'signature':
-                app.innerHTML = renderSignature.call(this);
-                this.attachSignatureEvents();
-                break;
-                
+                // ⚠️ on rend la signature via une méthode async dédiée
+                this.renderSignatureView();
+                return; // on sort tout de suite (le rendu async s'en charge)
+
             case 'employeeDetails':
                 app.innerHTML = renderEmployeeDetails.call(this);
                 break;
-                
+
             case 'employees':
                 app.innerHTML = renderEmployeesList.call(this);
                 break;
-                
+
             case 'transactions':
                 app.innerHTML = renderTransactionsList.call(this);
                 break;
-                
+
             case 'pendingSignatures':
                 app.innerHTML = renderPendingSignatures.call(this);
                 break;
-                
+
             case 'lowStock':
                 app.innerHTML = renderLowStock.call(this);
                 break;
-                
+
             case 'inventory':
                 app.innerHTML = renderInventory.call(this);
                 break;
-                
+
             case 'inventoryManagement':
                 app.innerHTML = renderInventoryManagement.call(this);
                 break;
-                
+
             case 'newInventoryItem':
                 app.innerHTML = renderNewInventoryItem.call(this);
                 this.attachNewInventoryItemEvents();
                 break;
-                
+
             default:
                 app.innerHTML = Components.renderError('Page introuvable', 'Cette page n\'existe pas.');
         }
     } catch (error) {
         console.error('Erreur lors du rendu:', error);
         app.innerHTML = Components.renderError('Erreur', 'Une erreur est survenue lors de l\'affichage.');
+    }
+}
+// Rendu asynchrone de la page Signature avec hydratation Firestore
+async renderSignatureView() {
+    const app = document.getElementById('app');
+
+    // Attache les événements de la page Signature
+attachSignatureEvents() {
+    const form = document.getElementById('signature-form');
+    const confirmBtn = document.getElementById('confirm-signature');
+
+    const submitHandler = async (e) => {
+        e?.preventDefault?.();
+
+        try {
+            // 1) Construire/collecter la "signature" (adapte si tu as des champs)
+            const signature = {
+                name: 'XGuard Réception', // ou une valeur récupérée via un champ input si tu en as
+                timestamp: new Date().toISOString()
+            };
+
+            // 2) Logique locale existante : enregistrer la signature avec ton DB local
+            //    (ta base contient déjà db.signTransaction(token, signature) d'après ton index.html)
+            let transaction = null;
+            if (typeof this.db?.signTransaction === 'function') {
+                transaction = this.db.signTransaction(this.currentToken, signature);
+            }
+
+            // 3) Marquer le lien "used" dans Firestore
+            try {
+                const { dbCloud, fb } = window;
+                if (dbCloud && fb) {
+                    await fb.updateDoc(
+                        fb.doc(dbCloud, "links", this.currentToken),
+                        { used: true, usedAt: new Date().toISOString(), signature }
+                    );
+                }
+            } catch (cloudErr) {
+                console.error('Firestore update error:', cloudErr);
+                // on n'empêche pas l'UX si le cloud échoue, mais on log
+            }
+
+            // 4) Afficher ton écran de succès existant
+            if (transaction && typeof renderSuccessSignature === 'function') {
+                document.getElementById('app').innerHTML = renderSuccessSignature.call(this, transaction);
+            } else {
+                // fallback si renderSuccessSignature indisponible
+                document.getElementById('app').innerHTML = `
+                  <div class="min-h-screen flex items-center justify-center">
+                    <div class="bg-white p-6 rounded-xl shadow text-center">
+                      <h2 class="text-2xl font-bold mb-2">Signature confirmée</h2>
+                      <p>La transaction a été enregistrée.</p>
+                    </div>
+                  </div>`;
+            }
+
+        } catch (err) {
+            console.error('Erreur lors de la confirmation de signature:', err);
+            window.showNotification?.("Erreur lors de la signature", "error");
+        }
+    };
+
+    // Cas 1 : formulaire
+    if (form) {
+        form.addEventListener('submit', submitHandler, { once: true });
+    }
+
+    // Cas 2 : bouton
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', submitHandler, { once: true });
+    }
+}
+
+
+    // 1) Charger/valider le lien depuis Firestore et hydrater le store local
+    const ok = await this.hydrateSignatureFromCloud(this.currentToken);
+
+    if (!ok) {
+        app.innerHTML = Components.renderError('Lien invalide', 'Ce lien a déjà été utilisé ou n\'existe pas.');
+        return;
+    }
+
+    // 2) Rendu de l'écran signature existant
+    app.innerHTML = renderSignature.call(this);
+
+    // 3) Attacher les événements spécifiques à la signature (si tu en as)
+    if (typeof this.attachSignatureEvents === 'function') {
+        this.attachSignatureEvents();
     }
 }
 
@@ -184,6 +272,11 @@ cancelAllSignatures() {
                 this.currentEmployee,
                 this.selection,
                 notes
+                // [AJOUT] Si c’est une attribution (donc lien de signature), on sauvegarde le lien dans Firestore
+if (this.transactionType !== 'retour' && transaction?.linkToken) {
+  await this.saveLinkToCloud(transaction);
+}
+
             );
 
             if (this.transactionType === 'retour') {
@@ -735,4 +828,113 @@ XGuard Réception</textarea>
             }
         });
     }
+    // === [AJOUT] Sauvegarder le lien de signature dans Firestore ===
+async saveLinkToCloud(transaction) {
+  try {
+    // Firebase exposé par index.html
+    const { dbCloud, fb } = window;
+    if (!dbCloud || !fb) throw new Error('Firestore non initialisé');
+
+    // Récupérer quelques infos utiles
+    const employee = this.db.getEmployee(transaction.employeeId);
+    const total = transaction.items.reduce((s, it) => s + (it.price * it.quantity), 0);
+
+    // Document links/{token}
+    const data = {
+      token: transaction.linkToken,
+      transactionId: transaction.id,
+      employeeId: employee?.id || transaction.employeeId,
+      employeeName: employee?.name || '',
+      items: transaction.items,
+      total,
+      createdAt: transaction.createdAt,
+      used: false
+    };
+
+    await fb.setDoc(fb.doc(dbCloud, "links", transaction.linkToken), data, { merge: true });
+
+    // Assurer la présence locale d’un “link” (pour compatibilité avec renderSignature existant)
+    if (!this.db.data.links.find(l => l.token === transaction.linkToken)) {
+      this.db.data.links.push({
+        token: transaction.linkToken,
+        transactionId: transaction.id,
+        used: false,
+        expiresAt: new Date(Date.now() + 24*60*60*1000).toISOString()
+      });
+      this.db.save();
+    }
+  } catch (err) {
+    console.error('saveLinkToCloud error', err);
+  }
+}
+
+// === [AJOUT] Hydrater les données locales à partir du lien Firestore ===
+async hydrateSignatureFromCloud(token) {
+  try {
+    const { dbCloud, fb } = window;
+    if (!dbCloud || !fb) throw new Error('Firestore non initialisé');
+
+    const snap = await fb.getDoc(fb.doc(dbCloud, "links", token));
+    if (!snap.exists()) {
+      // Lien inexistant
+      this.currentView = 'home';
+      window.showNotification?.('Lien invalide ou expiré', 'error');
+      return false;
+    }
+
+    const linkDoc = snap.data();
+    if (linkDoc.used) {
+      this.currentView = 'home';
+      window.showNotification?.('Ce lien a déjà été utilisé', 'warning');
+      return false;
+    }
+
+    // 1) Assurer l’employé en local
+    const existingEmp = this.db.getEmployee(linkDoc.employeeId);
+    if (!existingEmp) {
+      this.db.addEmployee({
+        id: linkDoc.employeeId,
+        name: linkDoc.employeeName || linkDoc.employeeId,
+        phone: '',
+        email: ''
+      });
+    }
+
+    // 2) Assurer la transaction en local (minimale)
+    let tx = this.db.data.transactions.find(t => t.id === linkDoc.transactionId);
+    if (!tx) {
+      tx = {
+        id: linkDoc.transactionId,
+        type: 'attribution',
+        employeeId: linkDoc.employeeId,
+        items: linkDoc.items || [],
+        notes: '',
+        createdAt: linkDoc.createdAt || new Date().toISOString(),
+        createdBy: 'Lien',
+        signature: null,
+        linkToken: linkDoc.token,
+        signed: false
+      };
+      this.db.data.transactions.push(tx);
+    }
+
+    // 3) Assurer le lien local
+    if (!this.db.data.links.find(l => l.token === linkDoc.token)) {
+      this.db.data.links.push({
+        token: linkDoc.token,
+        transactionId: linkDoc.transactionId,
+        used: false,
+        expiresAt: new Date(Date.now() + 24*60*60*1000).toISOString()
+      });
+    }
+
+    this.db.save();
+    return true;
+  } catch (err) {
+    console.error('hydrateSignatureFromCloud error', err);
+    window.showNotification?.('Erreur de chargement du lien', 'error');
+    return false;
+  }
+}
+
 }
