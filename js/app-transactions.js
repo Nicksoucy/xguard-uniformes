@@ -349,6 +349,7 @@ function renderPendingList(pendingTransactions) {
                 const employee = this.db.getEmployee(transaction.employeeId);
                 const total = transaction.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
                 const BASE = 'https://nicksoucy.github.io/xguard-uniformes/';
+                const BASE = window.XGUARD_BASE || (window.location.origin + window.location.pathname.replace(/index\.html?$/,''));
                 const linkUrl = `${BASE}?token=${link.token}`;
                 const daysAgo = Math.floor((new Date() - new Date(transaction.createdAt)) / (1000 * 60 * 60 * 24));
                 
