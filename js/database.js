@@ -222,37 +222,47 @@ export class Database {
         );
     }
 
-    // ==================== GESTION DES TRANSACTIONS ====================
-    createTransaction(type, employeeId, items, notes = '') {
-        const transaction = {
-            id: this.generateId(),
-            type, // 'attribution', 'retour', 'ajout'
-            employeeId,
-            items: items.map(item => ({
-                name: item.name,
-                size: item.size,
-                quantity: item.quantity,
-                price: item.price
-            })),
-            notes,
-            createdAt: new Date().toISOString(),
-            createdBy: 'Réceptionniste',
-            signature: null,
-            linkToken: null,
-            signed: false
-        };
+// 1. Remplacez TOUTE la méthode createTransaction par celle-ci :
+createTransaction(type, employeeId, items, notes = '') {
+    const transaction = {
+        id: this.generateId(),
+        type,
+        employeeId,
+        items,
+        notes,
+        createdAt: new Date().toISOString(),
+        createdBy: 'Réceptionniste',
+        signature: null,
+        linkToken: null,
+        signed: false
+    };
 
-        // Si c'est une attribution ou un ajout, créer un lien de signature
-        if (type === 'attribution' || type === 'ajout') {
-            transaction.linkToken = this.generateToken();
-            this.data.links.push({
-                token: transaction.linkToken,
-                transactionId: transaction.id,
-                used: false,
-                createdAt: new Date().toISOString(),
-                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 jours
-            });
-        }
+    if (type === 'attribution' || type === 'ajout') {
+        transaction.linkToken = this.generateToken();
+        this.data.links.push({
+            token: transaction.linkToken,
+            transactionId: transaction.id,
+            used: false,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        });
+    }
+
+    this.updateInventoryForTransaction(type, items);
+    this.data.transactions.push(transaction);
+    this.save();
+    return transaction;
+}
+
+// 2. Ajoutez ces deux méthodes à la fin de la classe Database :
+removeSignature(token) {
+    this.data.links = this.data.links.filter(link => link.token !== token);
+    this.save();
+}
+
+removeAllSignatures() {
+    this.data.links = [];
+    this.save();
+}
 
         // Mettre à jour l'inventaire
         this.updateInventoryForTransaction(type, items);
