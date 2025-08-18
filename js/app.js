@@ -67,76 +67,88 @@ export class XGuardApp {
         this.render();
     }
 
-    // ==================== RENDU PRINCIPAL ====================
-    render() {
-        const app = document.getElementById('app');
-        
-        try {
-            switch(this.currentView) {
-                case 'home':
-                    app.innerHTML = renderHome.call(this);
-                    break;
-                    
-                case 'newEmployee':
-                    app.innerHTML = renderNewEmployee.call(this);
-                    this.attachNewEmployeeEvents();
-                    break;
-                    
-                case 'selectEmployee':
-                    app.innerHTML = renderSelectEmployee.call(this);
-                    this.attachSelectEmployeeEvents();
-                    break;
-                    
-                case 'transaction':
-                    app.innerHTML = renderTransaction.call(this);
-                    break;
-                    
-                case 'signature':
-                    app.innerHTML = renderSignature.call(this);
-                    this.attachSignatureEvents();
-                    break;
-                    
-                case 'employeeDetails':
-                    app.innerHTML = renderEmployeeDetails.call(this);
-                    break;
-                    
-                case 'employees':
-                    app.innerHTML = renderEmployeesList.call(this);
-                    break;
-                    
-                case 'transactions':
-                    app.innerHTML = renderTransactionsList.call(this);
-                    break;
-                    
-                case 'pendingSignatures':
-                    app.innerHTML = renderPendingSignatures.call(this);
-                    break;
-                    
-                case 'lowStock':
-                    app.innerHTML = renderLowStock.call(this);
-                    break;
-                    
-                case 'inventory':
-                    app.innerHTML = renderInventory.call(this);
-                    break;
-                    
-                case 'inventoryManagement':
-                    app.innerHTML = renderInventoryManagement.call(this);
-                    break;
-                    
-                case 'newInventoryItem':
-                    app.innerHTML = renderNewInventoryItem.call(this);
-                    this.attachNewInventoryItemEvents();
-                    break;
-                    
-                default:
-                    app.innerHTML = Components.renderError('Page introuvable', 'Cette page n\'existe pas.');
-            }
-        } catch (error) {
-            console.error('Erreur lors du rendu:', error);
-            app.innerHTML = Components.renderError('Erreur', 'Une erreur est survenue lors de l\'affichage de la page.');
+   // ==================== RENDU PRINCIPAL ====================
+render() {
+    const app = document.getElementById('app');
+    
+    try {
+        switch(this.currentView) {
+            case 'home':
+                app.innerHTML = renderHome.call(this);
+                break;
+                
+            case 'newEmployee':
+                app.innerHTML = renderNewEmployee.call(this);
+                this.attachNewEmployeeEvents();
+                break;
+                
+            case 'selectEmployee':
+                app.innerHTML = renderSelectEmployee.call(this);
+                this.attachSelectEmployeeEvents();
+                break;
+                
+            case 'transaction':
+                app.innerHTML = renderTransaction.call(this);
+                break;
+                
+            case 'signature':
+                app.innerHTML = renderSignature.call(this);
+                this.attachSignatureEvents();
+                break;
+                
+            case 'employeeDetails':
+                app.innerHTML = renderEmployeeDetails.call(this);
+                break;
+                
+            case 'employees':
+                app.innerHTML = renderEmployeesList.call(this);
+                break;
+                
+            case 'transactions':
+                app.innerHTML = renderTransactionsList.call(this);
+                break;
+                
+            case 'pendingSignatures':
+                app.innerHTML = renderPendingSignatures.call(this);
+                break;
+                
+            case 'lowStock':
+                app.innerHTML = renderLowStock.call(this);
+                break;
+                
+            case 'inventory':
+                app.innerHTML = renderInventory.call(this);
+                break;
+                
+            case 'inventoryManagement':
+                app.innerHTML = renderInventoryManagement.call(this);
+                break;
+                
+            case 'newInventoryItem':
+                app.innerHTML = renderNewInventoryItem.call(this);
+                this.attachNewInventoryItemEvents();
+                break;
+                
+            default:
+                app.innerHTML = Components.renderError('Page introuvable', 'Cette page n\'existe pas.');
         }
+    } catch (error) {
+        console.error('Erreur lors du rendu:', error);
+        app.innerHTML = Components.renderError('Erreur', 'Une erreur est survenue lors de l\'affichage.');
     }
+}
+
+// === AJOUT : Annuler une signature spécifique (par token) ===
+cancelSignature(token) {
+    this.db.removeSignature(token);
+    this.render();
+}
+
+// === AJOUT : Annuler toutes les signatures en attente ===
+cancelAllSignatures() {
+    this.db.removeAllSignatures();
+    this.render();
+}
 
     // ==================== MÉTHODES DE TRANSACTION ====================
     startTransaction(type) {
