@@ -1425,7 +1425,8 @@
                                     ${pendingTransactions.map(({ link, transaction }) => {
                                         const employee = this.db.getEmployee(transaction.employeeId);
                                         const total = transaction.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                                        const linkUrl = `${window.location.origin}${window.location.pathname}?token=${link.token}`;
+                                        const BASE = 'https://nicksoucy.github.io/xguard-uniformes/';
+                                        const linkUrl = `${BASE}?token=${transaction.linkToken}`;
                                         const daysAgo = Math.floor((new Date() - new Date(transaction.createdAt)) / (1000 * 60 * 60 * 24));
                                         
                                         return `
