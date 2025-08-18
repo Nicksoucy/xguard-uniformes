@@ -2137,7 +2137,8 @@ ${qty}
                 } else {
                     // Pour attribution/ajout, afficher le lien
                     const employee = this.db.getEmployee(this.currentEmployee);
-                    const linkUrl = `${window.location.origin}${window.location.pathname}?token=${transaction.linkToken}`;
+                    const linkUrl = const BASE = 'https://nicksoucy.github.io/xguard-uniformes/';
+                                    const linkUrl = `${BASE}?token=${link.token}`;
                     
                     // Créer le modal moderne
                     const modal = document.createElement('div');
