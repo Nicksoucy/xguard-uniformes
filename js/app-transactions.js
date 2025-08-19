@@ -488,6 +488,30 @@ export function renderSignature() {
     `;
 }
 
+// Vue: confirmation de signature réussie
+export function renderSuccessSignature() {
+  return `
+    <div class="min-h-screen gradient-bg flex items-center justify-center p-6">
+      <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <h2 class="text-2xl font-bold mb-2">Signature confirmée</h2>
+        <p class="text-gray-600 mb-6">Merci! La transaction a été signée avec succès.</p>
+        <button onclick="app.navigateTo('home')"
+          class="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-4 py-2 rounded-xl
+                 hover:from-purple-700 hover:to-purple-800 transition font-medium">
+          Retour à l'accueil
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+
 // Fonction utilitaire pour les erreurs
 function renderError(title, message) {
     return `
