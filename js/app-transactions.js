@@ -348,7 +348,6 @@ function renderPendingList(pendingTransactions) {
             ${pendingTransactions.map(({ link, transaction }) => {
                 const employee = this.db.getEmployee(transaction.employeeId);
                 const total = transaction.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                const BASE = 'https://nicksoucy.github.io/xguard-uniformes/';
                 const BASE = window.XGUARD_BASE || (window.location.origin + window.location.pathname.replace(/index\.html?$/,''));
                 const linkUrl = `${BASE}?token=${link.token}`;
                 const daysAgo = Math.floor((new Date() - new Date(transaction.createdAt)) / (1000 * 60 * 60 * 24));
@@ -380,7 +379,7 @@ function renderPendingList(pendingTransactions) {
                             <div class="flex items-center gap-2">
                                 <input type="text" value="${linkUrl}" readonly 
                                     class="flex-1 px-3 py-2 bg-white border rounded-lg text-xs" id="link-${link.token}">
-                                <button onclick="app.copyLink('${linkUrl}')" 
+                                <button onclick=\"navigator.clipboard.writeText('${linkUrl}').then(()=>alert('Lien copié')).catch(()=>alert('Impossible de copier'));\" 
                                     class="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition">
                                     Copier
                                 </button>
