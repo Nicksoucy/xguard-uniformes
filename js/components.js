@@ -29,7 +29,7 @@ export function renderHeader(title, showBackButton = true, showHomeButton = true
     `;
 }
 
-// Modal générique - CORRECTION: paramètre renommé de 'options' à 'modalOptions'
+// Modal générique
 export function renderModal(modalOptions = {}) {
     const {
         title = '',
@@ -188,7 +188,7 @@ export function renderTable(headers, rows, actions = null) {
     `;
 }
 
-// Champ de formulaire - CORRECTION: paramètre renommé de 'options' à 'fieldOptions'
+// Champ de formulaire
 export function renderFormField(fieldOptions = {}) {
     const {
         type = 'text',
@@ -306,3 +306,24 @@ export function renderInventoryCard(item) {
         </div>
     `;
 }
+
+/* ---------------------------------------------------------
+   EXPORT D’AGRÉGATION POUR COMPATIBILITÉ AVEC app.js
+   (app.js attend { Components } depuis './components.js')
+--------------------------------------------------------- */
+export const Components = {
+    renderHeader,
+    renderModal,
+    renderLoadingSpinner,
+    renderStatCard,
+    renderStatusBadge,
+    renderActionButton,
+    renderAlert,
+    renderTable,
+    renderFormField,
+    renderEmployeeCard,
+    renderInventoryCard
+};
+
+// (Optionnel, mais pratique si quelqu’un fait: import Components from './components.js')
+export default Components;
