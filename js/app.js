@@ -1,14 +1,20 @@
 // ==================== APPLICATION PRINCIPALE XGUARD ====================
 
-// Import des modules de l'app
+import Components from './components.js';
 import { Database } from './database.js';
-// Les vues INVENTAIRE viennent de app-inventory.js
-import { renderInventory, renderLowStock, renderInventoryManagement, renderNewInventoryItem } from './app-inventory.js';
 
-// La vue d'accueil NE vient PAS d'app-inventory.js
-// Choisis le bon fichier qui contient renderHome :
-import { renderHome } from './app-home.js'; // ou './home.js' selon ton projet
+// Accueil
+import { renderHome } from './app-home.js';
 
+// Inventaire
+import {
+  renderInventory,
+  renderLowStock,
+  renderInventoryManagement,
+  renderNewInventoryItem
+} from './app-inventory.js';
+
+// Employés
 import {
   renderEmployeesList,
   renderSelectEmployee,
@@ -16,6 +22,7 @@ import {
   renderEmployeeDetails
 } from './app-employees.js';
 
+// Transactions / Signatures
 import {
   renderTransaction,
   renderTransactionsList,
@@ -24,60 +31,69 @@ import {
   renderSuccessSignature
 } from './app-transactions.js';
 
-import { Components } from './components.js';
-import { showNotification, copyLink, downloadCSV, formatDate, formatCurrency } from './utils.js';
+// Utils
+import { showNotification, copyLink } from './utils.js';
 
 // ==================== CLASSE PRINCIPALE ====================
 export class XGuardApp {
   constructor() {
-    // Base de données locale (localStorage)
     this.db = new Database();
 
-    // État de l'application
+    // État global
     this.currentView = 'home';
     this.currentEmployee = null;
-    this.transactionType = 'attribution'; // 'attribution' | 'ajout' | 'retour'
-    this.selection = [];                  // sélection en cours (items)
-    this.currentToken = null;             // token de signature quand on est en mode lien
+    this.transactionType = 'attribution';   // 'attribution' | 'ajout' | 'retour'
+    this.selection = [];                    // sélection d'items en cours
+    this.currentToken = null;               // jeton de signature
 
-    // Vue / filtres
+    // Filtres / recherche
     this.searchQuery = '';
     this.showInactive = false;
 
-    // Initialisation
+    // Démarrage
     this.init();
+  }
+
+  // Petite UI d’erreur si Components.renderError n’existe pas
+  _errorUI(title, message) {
+    if (Components && typeof Components.renderError === 'function') {
+      return Components.renderError(title, message);
+    }
+    return `
+      <div class="max-w-3xl mx-auto p-4">
+        <div class="bg-red-50 text-red-700 p-4 rounded-xl shadow">
+          <div class="font-semibold mb-1">${title}</div>
+          <div class="text-sm">${message}</div>
+        </div>
+      </div>`;
   }
 
   // ==================== INITIALISATION ====================
   async init() {
     try {
-      console.log('🚀 Initialisation de XGuard...');
-
-      // Rendu initial
+      // Si l’URL contient ?token=..., laisse index.html positionner la vue
+      // (index.html peut mettre app.currentToken + app.currentView='signature')
       this.render();
-
-      // Raccourcis clavier éventuels
       this.initKeyboardShortcuts?.();
-
-      console.log('✅ XGuard initialisé');
     } catch (error) {
       console.error('❌ Erreur init:', error);
-      document.getElementById('app').innerHTML = Components.renderError(
-        'Erreur de chargement',
-        'Impossible de démarrer l’application.'
-      );
+      document.getElementById('app').innerHTML =
+        this._errorUI('Erreur de chargement', 'Impossible de démarrer l’application.');
     }
   }
 
-  // ==================== NAVIGATION & AIDE ====================
+  // ==================== NAVIGATION ====================
   navigateTo(view, params = {}) {
-    // Petit helper : on met à jour l’état et on rend
     if (params.employee) this.currentEmployee = params.employee;
     if (params.type) this.transactionType = params.type;
     if (params.token) this.currentToken = params.token;
 
     this.currentView = view;
     this.render();
+
+    // (Optionnel) pousser l’état dans l’historique/URL
+    // history.pushState({ view }, '', `#${view}`);
+    window.scrollTo(0, 0);
   }
 
   selectEmployee(employeeId) {
@@ -102,83 +118,77 @@ export class XGuardApp {
           app.innerHTML = renderHome.call(this);
           break;
 
+        // EMPLOYÉS
+        case 'employees':
+          app.innerHTML = renderEmployeesList.call(this);
+          break;
+        case 'employeeDetails':
+          app.innerHTML = renderEmployeeDetails.call(this);
+          break;
+        case 'selectEmployee':
+          app.innerHTML = renderSelectEmployee.call(this);
+          this.attachSelectEmployeeEvents?.();
+          break;
         case 'newEmployee':
           app.innerHTML = renderNewEmployee.call(this);
           this.attachNewEmployeeEvents?.();
           break;
 
-        case 'selectEmployee':
-          app.innerHTML = renderSelectEmployee.call(this);
-          this.attachSelectEmployeeEvents?.();
-          break;
-
+        // TRANSACTIONS / SIGNATURES
         case 'transaction':
           app.innerHTML = renderTransaction.call(this);
           break;
-
-        case 'signature':
-          // ⚠️ rendu asynchrone (on sort tout de suite)
-          this.renderSignatureView();
-          return;
-
-        case 'employeeDetails':
-          app.innerHTML = renderEmployeeDetails.call(this);
-          break;
-
-        case 'employees':
-          app.innerHTML = renderEmployeesList.call(this);
-          break;
-
         case 'transactions':
           app.innerHTML = renderTransactionsList.call(this);
           break;
-
         case 'pendingSignatures':
           app.innerHTML = renderPendingSignatures.call(this);
           break;
-
-        case 'lowStock':
-          app.innerHTML = renderLowStock.call(this);
+        case 'signature':
+          // rendu asynchrone (on quitte tout de suite)
+          this.renderSignatureView();
+          return;
+        case 'signatureSuccess':
+          app.innerHTML = renderSuccessSignature.call(this);
           break;
 
+        // INVENTAIRE
         case 'inventory':
           app.innerHTML = renderInventory.call(this);
           break;
-
         case 'inventoryManagement':
           app.innerHTML = renderInventoryManagement.call(this);
           break;
-
         case 'newInventoryItem':
           app.innerHTML = renderNewInventoryItem.call(this);
           this.attachNewInventoryItemEvents?.();
           break;
+        case 'lowStock':
+          app.innerHTML = renderLowStock.call(this);
+          break;
 
         default:
-          app.innerHTML = Components.renderError('Page introuvable', 'Cette page n’existe pas.');
+          app.innerHTML = this._errorUI('Page introuvable', 'Cette page n’existe pas.');
       }
     } catch (error) {
       console.error('Erreur lors du rendu:', error);
-      app.innerHTML = Components.renderError('Erreur', 'Une erreur est survenue lors de l’affichage.');
+      app.innerHTML = this._errorUI('Erreur', 'Une erreur est survenue lors de l’affichage.');
     }
   }
 
-  // ============ Rendu asynchrone de la page Signature avec hydratation Firestore ============
+  // ============ Rendu asynchrone de la page Signature (avec Firestore) ============
   async renderSignatureView() {
     const app = document.getElementById('app');
 
-    // Charger/valider le lien depuis Firestore et hydrater le store local
     const ok = await this.hydrateSignatureFromCloud(this.currentToken);
-
     if (!ok) {
-      app.innerHTML = Components.renderError('Lien invalide', 'Ce lien a déjà été utilisé ou n’existe pas.');
+      app.innerHTML = this._errorUI('Lien invalide', 'Ce lien a déjà été utilisé ou n’existe pas.');
       return;
     }
 
-    // Rendu de l’écran signature existant
     app.innerHTML = renderSignature.call(this);
 
-    // Attacher les événements spécifiques (soumission)
+    // Attache les handlers (soumission signature)
     if (typeof this.attachSignatureEvents === 'function') {
       this.attachSignatureEvents();
     }
@@ -190,11 +200,10 @@ export class XGuardApp {
       showNotification('Veuillez sélectionner au moins un article', 'error');
       return;
     }
-
     const notes = document.getElementById('transaction-notes')?.value || '';
 
     try {
-      // 1) Créer la transaction (DB locale)
+      // 1) Transaction locale
       const transaction = this.db.createTransaction(
         this.transactionType,
         this.currentEmployee,
@@ -202,7 +211,7 @@ export class XGuardApp {
         notes
       );
 
-      // 2) Si attribution/ajout (pas "retour"), on sauvegarde le lien dans Firestore
+      // 2) Lien Firestore si attribution/ajout
       if (this.transactionType !== 'retour' && transaction?.linkToken) {
         await this.saveLinkToCloud(transaction);
       }
@@ -212,7 +221,6 @@ export class XGuardApp {
         showNotification('Retour enregistré avec succès!', 'success');
         this.navigateTo('home');
       } else {
-        // Attribution/ajout → afficher le lien
         this.showSignatureLinkModal(transaction);
       }
     } catch (error) {
@@ -221,21 +229,21 @@ export class XGuardApp {
     }
   }
 
-  // ==================== MODAL LIEN DE SIGNATURE ====================
+  // ==================== MODALE LIEN DE SIGNATURE ====================
   showSignatureLinkModal(transaction) {
     const employee = this.db.getEmployee(transaction.employeeId);
 
-    // BASE publique (définie dans index.html) — fallback propre si absent
-    const BASE = window.XGUARD_BASE || (window.location.origin + window.location.pathname.replace(/index\.html?$/, ''));
+    const BASE =
+      window.XGUARD_BASE ||
+      (window.location.origin + window.location.pathname.replace(/index\.html?$/, ''));
     const linkUrl = `${BASE}?token=${transaction.linkToken}`;
 
-    // (Ton rendu existant peut être plus riche; ceci est minimal)
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50';
     modal.innerHTML = `
-      <div class="bg-white w-full max-w-lg rounded-2xl p-6">
+      <div class="bg-white w-full max-w-lg rounded-2xl p-6 shadow-xl">
         <h2 class="text-xl font-semibold mb-3">Lien de signature</h2>
-        <p class="text-sm mb-4">Employé: <strong>${employee?.name || employee?.id || '—'}</strong></p>
+        <p class="text-sm mb-4">Employé : <strong>${employee?.name || employee?.id || '—'}</strong></p>
         <div class="flex gap-2">
           <input id="signature-link" class="flex-1 px-3 py-2 border rounded" value="${linkUrl}" readonly />
           <button id="copy-link" class="px-3 py-2 rounded bg-indigo-600 text-white">Copier</button>
@@ -264,18 +272,12 @@ export class XGuardApp {
 
   // ==================== ÉVÉNEMENTS PAGE SIGNATURE ====================
   attachSignatureEvents() {
-    // Deux cas possibles suivant ton HTML :
-    // 1) Un formulaire <form id="signature-form">…</form> (submit)
-    // 2) Un bouton <button id="submit-signature">Confirmer</button>
     const form = document.getElementById('signature-form');
     const submitBtn = document.getElementById('submit-signature');
 
     const handler = async (e) => {
       e?.preventDefault?.();
-
       try {
-        // Exemple : si tu as un canvas SignaturePad, remplace par la capture réelle.
-        // Ici on fait minimal : une “trace” de signature pour la DB locale.
         const signature = {
           // data: signaturePad?.toDataURL() ?? null,
           timestamp: new Date().toISOString()
@@ -284,7 +286,7 @@ export class XGuardApp {
         // 1) Local : enregistrer la signature
         const transaction = this.db.signTransaction(this.currentToken, signature);
 
-        // 2) Cloud : marquer le lien comme "utilisé"
+        // 2) Cloud : marquer le lien utilisé
         try {
           const { dbCloud, fb } = window;
           if (dbCloud && fb) {
@@ -297,9 +299,10 @@ export class XGuardApp {
           console.error('Firestore update error:', cloudErr);
         }
 
-        // 3) UI : succès ou erreur
+        // 3) UI
         if (transaction) {
-          document.getElementById('app').innerHTML = renderSuccessSignature.call(this, transaction);
+          document.getElementById('app').innerHTML =
+            renderSuccessSignature.call(this, transaction);
         } else {
           showNotification('Erreur lors de la signature', 'error');
         }
@@ -335,7 +338,7 @@ export class XGuardApp {
 
       await fb.setDoc(fb.doc(dbCloud, "links", transaction.linkToken), data, { merge: true });
 
-      // Assurer un lien local pour compatibilité UI
+      // Lien local (pour compat UI)
       if (!this.db.data.links.find(l => l.token === transaction.linkToken)) {
         this.db.data.links.push({
           token: transaction.linkToken,
@@ -357,7 +360,6 @@ export class XGuardApp {
 
       const snap = await fb.getDoc(fb.doc(dbCloud, "links", token));
       if (!snap.exists()) {
-        // Lien inexistant
         this.currentView = 'home';
         showNotification?.('Lien invalide ou expiré', 'error');
         return false;
@@ -381,7 +383,7 @@ export class XGuardApp {
         });
       }
 
-      // 2) Transaction locale minimale
+      // 2) Transaction locale minimale (si absente)
       let tx = this.db.data.transactions.find(t => t.id === linkDoc.transactionId);
       if (!tx) {
         tx = {
@@ -420,14 +422,14 @@ export class XGuardApp {
 
   // ==================== RACCOURCIS CLAVIER (optionnel) ====================
   initKeyboardShortcuts() {
-    // Place-holder si tu en avais ; sinon tu peux supprimer cette méthode.
+    // Ajoute ici tes raccourcis si souhaité
   }
 
-  // ==================== AUTRES HOOKS UI (place-holders) ====================
+  // ==================== HOOKS UI (place-holders) ====================
   attachNewEmployeeEvents() {}
   attachSelectEmployeeEvents() {}
   attachNewInventoryItemEvents() {}
 }
 
-// Expose l’app globalement si besoin (index.html le fait déjà)
+// Expose global (utile pour navigation inline HTML)
 window.XGuardApp = XGuardApp;
