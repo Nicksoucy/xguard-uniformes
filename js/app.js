@@ -2,13 +2,12 @@
 
 // Import des modules de l'app
 import { Database } from './database.js';
-import {
-  renderHome,
-  renderInventory,
-  renderLowStock,
-  renderInventoryManagement,
-  renderNewInventoryItem
-} from './app-inventory.js';
+// Les vues INVENTAIRE viennent de app-inventory.js
+import { renderInventory, renderLowStock, renderInventoryManagement, renderNewInventoryItem } from './app-inventory.js';
+
+// La vue d'accueil NE vient PAS d'app-inventory.js
+// Choisis le bon fichier qui contient renderHome :
+import { renderHome } from './app-home.js'; // ou './home.js' selon ton projet
 
 import {
   renderEmployeesList,
