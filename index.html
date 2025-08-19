@@ -5,37 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XGuard – Gestion des uniformes</title>
   <meta name="description" content="Application XGuard pour la gestion des uniformes : employés, inventaire, attributions, retours et signatures." />
-  <link rel="stylesheet" href="css/styles.css" />
 
-  <!-- (Optionnel) Tailwind CDN si tu l'utilises encore directement -->
-  <!-- <script src="https://cdn.tailwindcss.com"></script> -->
+  <!-- Tailwind CDN (à charger AVANT ton CSS pour que ton CSS puisse surcharger) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Ton CSS (gradient-bg, hover-lift, etc.) -->
+  <link rel="stylesheet" href="./css/styles.css" />
+
+  <!-- (Optionnel) Petit favicon vide pour enlever le 404 -->
+  <link rel="icon" href="data:;base64,=">
 
   <!-- ================= Firebase (v10) ================= -->
-  <!-- Initialise Firebase + expose Firestore en global -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // ⚠️ Ta config (tu peux la laisser telle quelle)
     const firebaseConfig = {
       apiKey: "AIzaSyBT8bjhN5y2uJvn2IhvH5fVUGy-GGonsl4",
       authDomain: "xguard-uniformes.firebaseapp.com",
       projectId: "xguard-uniformes",
-      storageBucket: "xguard-uniformes.appspot.com",  // corrigé
+      storageBucket: "xguard-uniformes.appspot.com",
       messagingSenderId: "691025581173",
       appId: "1:691025581173:web:2b352d88770693628e543c",
       measurementId: "G-01CSX8L38E"
     };
 
     const appFB = initializeApp(firebaseConfig);
-    // On met Firestore et quelques helpers sur window pour y accéder depuis tes modules
     window.dbCloud = getFirestore(appFB);
     window.fb = { doc, setDoc, getDoc, updateDoc };
   </script>
 
-  <!-- ================= Helpers globaux ================= -->
   <script>
-    // BASE publique de l’application sur GitHub Pages (utile si tu en as besoin)
     window.XGUARD_BASE = 'https://nicksoucy.github.io/xguard-uniformes/';
   </script>
 </head>
