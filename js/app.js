@@ -4,6 +4,7 @@
 import { Database } from './database.js';
 // Les vues INVENTAIRE viennent de app-inventory.js
 import { renderInventory, renderLowStock, renderInventoryManagement, renderNewInventoryItem } from './app-inventory.js';
+import { renderSuccessSignature } from './app-transactions.js';
 
 // La vue d'accueil NE vient PAS d'app-inventory.js
 // Choisis le bon fichier qui contient renderHome :
