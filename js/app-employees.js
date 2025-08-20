@@ -2,12 +2,14 @@
 import Components from './components.js';
 
 // -------- Helpers (internes au module)
-function nextEmpId() {
-  const nums = (app.db.data.employees || [])
+function nextEmpId(db) {
+  // tolérant : fonctionne même si db n'est pas encore initialisée
+  const list = db?.data?.employees ?? [];
+  const nums = list
     .map(e => parseInt(String(e.id || '').replace(/\D/g, ''), 10))
     .filter(n => !isNaN(n));
-  const n = (nums.length ? Math.max(...nums) + 1 : 1);
-  return 'EMP' + String(n).padStart(3, '0');
+  const next = nums.length ? Math.max(...nums) + 1 : 1;
+  return 'EMP' + String(next).padStart(3, '0');
 }
 
 // ============ LISTE EMPLOYÉS ============
@@ -283,7 +285,7 @@ export function renderSelectEmployee() {
 
 // ============ NOUVEL EMPLOYÉ ============
 export function renderNewEmployee() {
-  const suggested = nextEmpId();
+  const suggested = nextEmpId(app?.db) || 'EMP001';
   const actionLabel =
     app.transactionType === 'retour' ? 'Créer & retourner' :
     app.transactionType === 'ajout'  ? 'Créer & ajouter' :
