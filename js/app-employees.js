@@ -108,9 +108,16 @@ export function renderEmployeesList() {
 
 export function renderSelectEmployee() {
   const employees = (this.db?.getEmployees?.() || []);
+  const title =
+    this.transactionType === 'retour'
+      ? "Retour d'uniformes – Sélectionner un employé"
+      : this.transactionType === 'ajout'
+      ? "Ajout d'équipement – Sélectionner un employé"
+      : "Attribution d'uniformes – Sélectionner un employé";
+
   return `
     <div class="min-h-screen bg-gray-50">
-      ${Components.renderHeader('Sélectionner un employé')}
+      ${Components.renderHeader(title)}
       <div class="max-w-6xl mx-auto p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         ${employees.map(e => `
           <div class="bg-white rounded-2xl shadow p-4 hover-lift ${e.active===false?'opacity-60':''}">
