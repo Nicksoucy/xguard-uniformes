@@ -78,6 +78,11 @@ export function showNotification(message, type = 'info', duration = 3000) {
         warning: 'bg-orange-500 text-white',
         info: 'bg-blue-500 text-white'
     };
+
+// Assure la dispo globale pour les handlers inline
+if (typeof window !== 'undefined' && !window.showNotification) {
+  window.showNotification = showNotification;
+}
     
     notification.className += ` ${colors[type] || colors.info}`;
     
