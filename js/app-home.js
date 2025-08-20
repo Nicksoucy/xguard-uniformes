@@ -23,28 +23,29 @@ export function renderHome() {
           </div>
 
           <!-- ATTRIBUTION -->
-          <div onclick="(app.transactionType='attribution', app.navigateTo('transaction'))"
-               class="bg-white rounded-2xl shadow hover-lift p-5 cursor-pointer">
-            <div class="text-3xl mb-2">📦</div>
-            <div class="font-semibold text-lg">Attribution d'uniformes</div>
-            <div class="text-sm text-gray-600">Remettre des articles à un employé</div>
-          </div>
+<div onclick="(app.transactionType='attribution', app.currentEmployee=null, app.selection=[], app.navigateTo('selectEmployee'))"
+     class="bg-white rounded-2xl shadow hover-lift p-5 cursor-pointer">
+  <div class="text-3xl mb-2">📦</div>
+  <div class="font-semibold text-lg">Attribution d'uniformes</div>
+  <div class="text-sm text-gray-600">Remettre des articles à un employé</div>
+</div>
 
-          <!-- RETOUR -->
-          <div onclick="(app.transactionType='retour', app.navigateTo('transaction'))"
-               class="bg-white rounded-2xl shadow hover-lift p-5 cursor-pointer">
-            <div class="text-3xl mb-2">↩️</div>
-            <div class="font-semibold text-lg">Retour d'uniformes</div>
-            <div class="text-sm text-gray-600">Récupérer des articles</div>
-          </div>
+<!-- RETOUR -->
+<div onclick="(app.transactionType='retour', app.currentEmployee=null, app.selection=[], app.navigateTo('selectEmployee'))"
+     class="bg-white rounded-2xl shadow hover-lift p-5 cursor-pointer">
+  <div class="text-3xl mb-2">↩️</div>
+  <div class="font-semibold text-lg">Retour d'uniformes</div>
+  <div class="text-sm text-gray-600">Récupérer des articles</div>
+</div>
 
-          <!-- AJOUT D’ÉQUIPEMENT -->
-          <div onclick="(app.transactionType='ajout', app.navigateTo('transaction'))"
-               class="bg-white rounded-2xl shadow hover-lift p-5 cursor-pointer">
-            <div class="text-3xl mb-2">➕</div>
-            <div class="font-semibold text-lg">Ajout d'équipement</div>
-            <div class="text-sm text-gray-600">Ajouter un article non standard</div>
-          </div>
+<!-- AJOUT D’ÉQUIPEMENT -->
+<div onclick="(app.transactionType='ajout', app.currentEmployee=null, app.selection=[], app.navigateTo('selectEmployee'))"
+     class="bg-white rounded-2xl shadow hover-lift p-5 cursor-pointer">
+  <div class="text-3xl mb-2">➕</div>
+  <div class="font-semibold text-lg">Ajout d'équipement</div>
+  <div class="text-sm text-gray-600">Ajouter un article non standard</div>
+</div>
+
 
           <!-- SIGNATURES EN ATTENTE -->
           <div onclick="app.navigateTo('pendingSignatures')"
