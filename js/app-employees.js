@@ -1,8 +1,7 @@
 // js/app-employees.js
 import Components from './components.js';
-import { showNotification } from './utils.js';
 
-// -------- Helpers
+// -------- Helpers (internes au module)
 function nextEmpId() {
   const nums = (app.db.data.employees || [])
     .map(e => parseInt(String(e.id || '').replace(/\D/g, ''), 10))
@@ -10,7 +9,6 @@ function nextEmpId() {
   const n = (nums.length ? Math.max(...nums) + 1 : 1);
   return 'EMP' + String(n).padStart(3, '0');
 }
-const csvEscape = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
 
 // ============ LISTE EMPLOYÉS ============
 export function renderEmployeesList() {
@@ -91,64 +89,6 @@ export function renderEmployeesList() {
     `;
   };
 
-  // Import / Export helpers (inline pour éviter de modifier app.js)
-  const onExportCSV = () => {
-    const head = ['id', 'name', 'phone', 'email', 'notes', 'active'];
-    const lines = [head.join(',')];
-    for (const e of employeesRaw) {
-      lines.push([
-        csvEscape(e.id),
-        csvEscape(e.name),
-        csvEscape(e.phone || ''),
-        csvEscape(e.email || ''),
-        csvEscape(e.notes || ''),
-        e.active === false ? 'false' : 'true'
-      ].join(','));
-    }
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'employes.csv';
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  const onImportCSV = () => {
-    const ta = document.getElementById('emp-import-ta');
-    if (!ta) return;
-    const text = ta.value || '';
-    if (!text.trim()) { showNotification && showNotification('Collez un CSV', 'error'); return; }
-
-    const lines = text.split(/\r?\n/).filter(l => l.trim().length);
-    if (lines.length === 0) { showNotification && showNotification('CSV vide', 'error'); return; }
-
-    let header = lines[0].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-    const hasHeader = ['id','name','phone','email','notes','active'].every(h => header.includes(h));
-    const rows = hasHeader ? lines.slice(1) : lines;
-
-    let added = 0, dup = 0;
-    for (const line of rows) {
-      const cells = line.match(/("([^"]|"")*"|[^,]*)/g)?.filter(c => c !== '') || [];
-      const vals = cells.map(c => c.replace(/^"|"$/g, '').replace(/""/g, '"'));
-      const obj = hasHeader
-        ? Object.fromEntries(header.map((h, i) => [h, vals[i] ?? '']))
-        : { id: vals[0], name: vals[1], phone: vals[2], email: vals[3], notes: vals[4], active: vals[5] };
-
-      const ok = app.db.addEmployee({
-        id: (obj.id || '').trim(),
-        name: (obj.name || '').trim(),
-        phone: (obj.phone || '').trim(),
-        email: (obj.email || '').trim(),
-        notes: (obj.notes || '').trim(),
-        active: String(obj.active).toLowerCase() !== 'false'
-      });
-      ok ? added++ : dup++;
-    }
-    showNotification && showNotification(`Import terminé: ${added} ajoutés, ${dup} doublons.`, 'success');
-    app.empShowImporter = false;
-    app.render();
-  };
-
   // rendu
   return `
     <div class="min-h-screen bg-gray-50">
@@ -183,10 +123,28 @@ export function renderEmployeesList() {
                     onclick="app.navigateTo('newEmployee')">
               + Nouvel employé
             </button>
+
+            <!-- Export CSV -->
             <button class="px-3 py-2 rounded bg-white border w-full md:w-auto"
-                    onclick="(${onExportCSV.toString()})()">
+                    onclick="(function(){
+                      const esc = (s)=>'\"'+String(s ?? '').replace(/\"/g,'\"\"')+'\"';
+                      const head = ['id','name','phone','email','notes','active'];
+                      const lines = [head.join(',')];
+                      const all = (app.db?.getEmployees?.() || []);
+                      for(const e of all){
+                        lines.push([esc(e.id),esc(e.name),esc(e.phone||''),esc(e.email||''),esc(e.notes||''),(e.active===false?'false':'true')].join(','));
+                      }
+                      const blob = new Blob([lines.join('\\n')], { type:'text/csv;charset=utf-8' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href=url; a.download='employes.csv';
+                      document.body.appendChild(a); a.click(); a.remove();
+                      URL.revokeObjectURL(url);
+                    })()">
               Export CSV
             </button>
+
+            <!-- Import CSV -->
             <button class="px-3 py-2 rounded bg-white border w-full md:w-auto"
                     onclick="(app.empShowImporter=!app.empShowImporter, app.render())">
               Import CSV
@@ -202,7 +160,37 @@ export function renderEmployeesList() {
             <div class="flex gap-2">
               <button class="px-3 py-2 rounded bg-gray-200" onclick="(app.empShowImporter=false, app.render())">Annuler</button>
               <button class="px-3 py-2 rounded bg-green-600 text-white"
-                      onclick="(${onImportCSV.toString()})()">Importer</button>
+                      onclick="(function(){
+                        const ta = document.getElementById('emp-import-ta');
+                        const text = (ta && ta.value)||'';
+                        if(!text.trim()){ window.showNotification && window.showNotification('Collez un CSV','error'); return; }
+                        const lines = text.split(/\\r?\\n/).filter(l=>l.trim().length);
+                        if(!lines.length){ window.showNotification && window.showNotification('CSV vide','error'); return; }
+                        const header = lines[0].split(',').map(s=>s.trim().replace(/^\"|\"$/g,''));
+                        const hasHeader = ['id','name','phone','email','notes','active'].every(h=>header.includes(h));
+                        const rows = hasHeader ? lines.slice(1) : lines;
+                        let added=0, dup=0;
+                        for(const line of rows){
+                          const cells = line.match(/(\"([^\"]|\"\")*\"|[^,]*)/g)?.filter(c=>c!=='')||[];
+                          const vals = cells.map(c=>c.replace(/^\"|\"$/g,'').replace(/\"\"/g,'\"'));
+                          const obj = hasHeader
+                            ? Object.fromEntries(header.map((h,i)=>[h, vals[i] ?? '']))
+                            : { id:vals[0], name:vals[1], phone:vals[2], email:vals[3], notes:vals[4], active:vals[5] };
+                          const ok = app.db.addEmployee({
+                            id:(obj.id||'').trim(),
+                            name:(obj.name||'').trim(),
+                            phone:(obj.phone||'').trim(),
+                            email:(obj.email||'').trim(),
+                            notes:(obj.notes||'').trim(),
+                            active:String(obj.active).toLowerCase()!=='false'
+                          });
+                          ok ? added++ : dup++;
+                        }
+                        window.showNotification && window.showNotification('Import terminé: '+added+' ajoutés, '+dup+' doublons.','success');
+                        app.empShowImporter=false; app.render();
+                      })()">
+                Importer
+              </button>
             </div>
           </div>
         ` : ''}
@@ -354,11 +342,11 @@ export function renderNewEmployee() {
                 const notes = document.getElementById('emp-notes').value.trim();
                 const active= document.getElementById('emp-active').checked;
 
-                if(!name){ showNotification && showNotification('Nom requis','error'); return; }
+                if(!name){ window.showNotification && window.showNotification('Nom requis','error'); return; }
                 const created = app.db.addEmployee({ id, name, phone, email, notes, active });
-                if(!created){ showNotification && showNotification('Cet ID existe déjà','error'); return; }
+                if(!created){ window.showNotification && window.showNotification('Cet ID existe déjà','error'); return; }
 
-                showNotification && showNotification('Employé créé','success');
+                window.showNotification && window.showNotification('Employé créé','success');
                 app.navigateTo('employees');
               })()">
               Créer
@@ -373,11 +361,11 @@ export function renderNewEmployee() {
                 const notes = document.getElementById('emp-notes').value.trim();
                 const active= document.getElementById('emp-active').checked;
 
-                if(!name){ showNotification && showNotification('Nom requis','error'); return; }
+                if(!name){ window.showNotification && window.showNotification('Nom requis','error'); return; }
                 const created = app.db.addEmployee({ id, name, phone, email, notes, active });
-                if(!created){ showNotification && showNotification('Cet ID existe déjà','error'); return; }
+                if(!created){ window.showNotification && window.showNotification('Cet ID existe déjà','error'); return; }
 
-                showNotification && showNotification('Employé créé','success');
+                window.showNotification && window.showNotification('Employé créé','success');
                 app.currentEmployee = id;
                 if(!app.transactionType) app.transactionType = 'attribution';
                 app.selection = [];
