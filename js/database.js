@@ -281,4 +281,28 @@ toggleEmployeeActive(id) {
     for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
     return out;
   }
+  // --- AJOUT : stocker la signature base64 sur le "link" et la transaction liée ---
+export function setLinkSignature(token, dataUrl) {
+  if (!window.__db) window.__db = {};
+  const db = window.__db;
+
+  if (!db.links) db.links = {};
+  if (!db.links[token]) db.links[token] = {};
+
+  db.links[token].signature = dataUrl;
+
+  // Optionnel : si ton link a un mapping vers une transactionId
+  const txId = db.links[token].transactionId;
+  if (txId && db.transactions && db.transactions[txId]) {
+    db.transactions[txId].signature = dataUrl;
+  }
+}
+
+// --- AJOUT : récupérer la signature si déjà enregistrée localement ---
+export function getLinkSignature(token) {
+  const db = window.__db || {};
+  const link = db.links?.[token];
+  return link?.signature || null;
+}
+
 }
