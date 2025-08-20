@@ -100,17 +100,42 @@ export class Database {
   // ==================== EMPLOYÉS ====================
   getEmployees() { return this.data.employees.slice(); }
   getEmployee(id) { return this.data.employees.find(e => e.id === id) || null; }
-  addEmployee(emp) {
-    const exists = this.getEmployee(emp.id);
-    if (exists) return exists;
-    const toSave = {
-      id: emp.id, name: emp.name || emp.id, phone: emp.phone || '',
-      email: emp.email || '', active: true, createdAt: new Date().toISOString(), notes: emp.notes || ''
-    };
-    this.data.employees.push(toSave);
-    this.save();
-    return toSave;
+  addEmployee({ id, name, phone, email, notes, active = true }) {
+  // 1) ID manquant ? on en crée un simple (EMP###) en secours
+  if (!id) {
+    const nums = (this.data.employees || [])
+      .map(e => parseInt(String(e.id || '').replace(/\D/g, ''), 10))
+      .filter(n => !isNaN(n));
+    const next = (nums.length ? Math.max(...nums) + 1 : 1);
+    id = 'EMP' + String(next).padStart(3, '0');
   }
+
+  // 2) Empêche les doublons → renvoie false (le bouton montre alors l’erreur)
+  if (this.getEmployee(id)) return false;
+
+  // 3) Enregistre en respectant le statut "actif" choisi dans le formulaire
+  const toSave = {
+    id,
+    name:  name  || id,
+    phone: phone || '',
+    email: email || '',
+    notes: notes || '',
+    active: !!active,
+    createdAt: new Date().toISOString(),
+  };
+  updateEmployee(id, fields = {}) {
+  const emp = this.getEmployee(id);
+  if (!emp) return false;
+  Object.assign(emp, fields);
+  this.save();
+  return emp;
+}
+
+  if (!this.data.employees) this.data.employees = [];
+  this.data.employees.push(toSave);
+  this.save();
+  return toSave; // renvoie l'objet créé
+}
 
   // Calcul du solde d’un employé (articles en possession)
   getEmployeeBalance(employeeId) {
