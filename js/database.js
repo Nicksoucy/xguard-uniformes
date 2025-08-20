@@ -258,6 +258,23 @@ export class Database {
     return `${prefix}-${Date.now().toString(36).toUpperCase()}-${rnd}`;
   }
 
+  // Activer / désactiver un employé
+setEmployeeActive(id, active = true) {
+  const emp = this.getEmployee(id);
+  if (!emp) return false;
+  emp.active = !!active;
+  this.save();
+  return true;
+}
+
+toggleEmployeeActive(id) {
+  const emp = this.getEmployee(id);
+  if (!emp) return false;
+  emp.active = !emp.active;
+  this.save();
+  return emp.active;
+}
+
   generateToken(len = 32) {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let out = '';
