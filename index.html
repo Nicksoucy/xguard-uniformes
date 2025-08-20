@@ -46,30 +46,9 @@
 
   <!-- ================= Application ================= -->
   <!-- IMPORTANT : js/app.js importe les autres modules (app-transactions.js, etc.) -->
-  <script type="module">
-    import { XGuardApp } from './js/app.js';
-
-    // Boot de l'app
-    window.app = new XGuardApp();
-
-    // 1) Détection d'un lien de signature ?token=XXXX
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
-
-    if (token) {
-      // On passe le token à l'app et on bascule sur la vue "signature"
-      window.app.currentToken = token;
-      window.app.currentView  = 'signature';
-    }
-
-    // 2) Premier rendu
-    window.app.render();
-
-    // 3) (Option futur) Réécrire l'URL après rendu pour enlever le ?token de la barre d'adresse
-    // if (token && history.replaceState) {
-    //   const cleanUrl = window.location.origin + window.location.pathname;
-    //   history.replaceState({}, document.title, cleanUrl);
-    // }
-  </script>
+<script type="module">
+  import { XGuardApp } from './js/app.js';
+  window.app = new XGuardApp();   // app.js lit l'URL et rend la bonne vue
+</script>
 </body>
 </html>
