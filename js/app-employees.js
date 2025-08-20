@@ -162,7 +162,14 @@ export function renderSelectEmployee() {
 
 /* =================== NOUVEL EMPLOYÉ (formulaire) =================== */
 export function renderNewEmployee() {
-  const suggested = nextEmpId();
+  const suggested = (function(){
+    const nums = (app.db.data.employees || [])
+      .map(e => parseInt(String(e.id||'').replace(/\D/g,''), 10))
+      .filter(n => !isNaN(n));
+    const n = (nums.length ? Math.max(...nums) + 1 : 1);
+    return 'EMP' + String(n).padStart(3, '0');
+  })();
+
   const actionLabel =
     app.transactionType === 'retour' ? 'Créer & retourner' :
     app.transactionType === 'ajout'  ? "Créer & ajouter" :
@@ -222,10 +229,9 @@ export function renderNewEmployee() {
                 const active= document.getElementById('emp-active').checked;
 
                 if(!name){ showNotification && showNotification('Nom requis','error'); return; }
-                if(app.db.getEmployee(id)){ showNotification && showNotification('Cet ID existe déjà','error'); return; }
+                const ok = app.db.addEmployee({ id, name, phone, email, notes, active });
+                if(!ok){ showNotification && showNotification('Cet ID existe déjà','error'); return; }
 
-                app.db.addEmployee({ id, name, phone, email, notes });
-                app.db.setEmployeeActive(id, active);
                 showNotification && showNotification('Employé créé','success');
                 app.navigateTo('employees');
               })()">
@@ -242,13 +248,14 @@ export function renderNewEmployee() {
                 const active= document.getElementById('emp-active').checked;
 
                 if(!name){ showNotification && showNotification('Nom requis','error'); return; }
-                if(app.db.getEmployee(id)){ showNotification && showNotification('Cet ID existe déjà','error'); return; }
+                const ok = app.db.addEmployee({ id, name, phone, email, notes, active });
+                if(!ok){ showNotification && showNotification('Cet ID existe déjà','error'); return; }
 
-                app.db.addEmployee({ id, name, phone, email, notes });
-                app.db.setEmployeeActive(id, active);
                 showNotification && showNotification('Employé créé','success');
 
                 app.currentEmployee = id;
+                // Si aucun type n'est fixé, on force l'attribution par défaut
+                if(!app.transactionType) app.transactionType = 'attribution';
                 app.selection = [];
                 app.navigateTo('transaction');
               })()">
@@ -260,6 +267,7 @@ export function renderNewEmployee() {
     </div>
   `;
 }
+
 
 /* (Facultatif - placeholder) */
 export function renderEmployeeDetails() {
