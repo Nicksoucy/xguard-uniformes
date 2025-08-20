@@ -70,31 +70,33 @@ export class XGuardApp {
 
   // ==================== INITIALISATION ====================
   async init() {
-    try {
-      // Si l’URL contient ?token=..., laisse index.html positionner la vue
-      // (index.html peut mettre app.currentToken + app.currentView='signature')
-      this.render();
-      this.initKeyboardShortcuts?.();
-    } catch (error) {
-      console.error('❌ Erreur init:', error);
-      document.getElementById('app').innerHTML =
-        this._errorUI('Erreur de chargement', 'Impossible de démarrer l’application.');
-    }
+  try {
+    this._initFromUrl();    // lit l'URL (?view=..., ?emp=..., ?type=..., ?token=...)
+    this._bindHistory();    // écoute le bouton “retour”
+    this.render();
+    this.initKeyboardShortcuts?.();
+  } catch (error) {
+    console.error('❌ Erreur init:', error);
+    document.getElementById('app').innerHTML =
+      this._errorUI('Erreur de chargement', 'Impossible de démarrer l’application.');
   }
-
+}
   // ==================== NAVIGATION ====================
   navigateTo(view, params = {}) {
-    if (params.employee) this.currentEmployee = params.employee;
-    if (params.type) this.transactionType = params.type;
-    if (params.token) this.currentToken = params.token;
+  if ('employee' in params) this.currentEmployee = params.employee;
+  if ('type'     in params) this.transactionType  = params.type;
+  if ('token'    in params) this.currentToken     = params.token;
 
-    this.currentView = view;
-    this.render();
+  this.currentView = view;
 
-    // (Optionnel) pousser l’état dans l’historique/URL
-    // history.pushState({ view }, '', `#${view}`);
-    window.scrollTo(0, 0);
-  }
+  // 1) Pousser l'état dans l'historique + URL lisible
+  const state = this._getState();
+  history.pushState(state, '', this._urlFromState(state));
+
+  // 2) Rendu
+  this.render();
+  window.scrollTo(0, 0);
+}
 
   selectEmployee(employeeId) {
     this.currentEmployee = employeeId;
@@ -108,6 +110,67 @@ export class XGuardApp {
     this.navigateTo('transaction', { employee: this.currentEmployee, type });
   }
 
+// --- État <-> URL / History ---
+_getState() {
+  return {
+    view: this.currentView,
+    currentEmployee: this.currentEmployee,
+    transactionType: this.transactionType,
+    currentToken: this.currentToken
+  };
+}
+
+_applyState(s) {
+  if (!s) return;
+  this.currentView      = s.view || 'home';
+  this.currentEmployee  = s.currentEmployee || null;
+  this.transactionType  = s.transactionType || 'attribution';
+  this.currentToken     = s.currentToken || null;
+}
+
+_urlFromState(s) {
+  const p = new URLSearchParams();
+  if (s.view)             p.set('view', s.view);
+  if (s.currentEmployee)  p.set('emp',  s.currentEmployee);
+  if (s.transactionType)  p.set('type', s.transactionType);
+  if (s.currentToken)     p.set('token', s.currentToken);
+  // Garde le même chemin (GitHub Pages)
+  return `${window.location.pathname}?${p.toString()}`;
+}
+
+_initFromUrl() {
+  const p = new URLSearchParams(window.location.search);
+  const token = p.get('token');               // lien de signature
+  const view  = p.get('view');
+  const emp   = p.get('emp');
+  const type  = p.get('type');
+
+  if (token) {
+    this.currentToken = token;
+    this.currentView  = 'signature';
+  } else {
+    this.currentView = view || 'home';
+  }
+  if (emp)  this.currentEmployee = emp;
+  if (type) this.transactionType = type;
+
+  // Synchronise l'history courant (remplace l'entrée actuelle)
+  history.replaceState(this._getState(), '', this._urlFromState(this._getState()));
+}
+
+_bindHistory() {
+  window.addEventListener('popstate', (e) => {
+    // Quand l’utilisateur clique “retour”
+    if (e.state && e.state.view) {
+      this._applyState(e.state);
+    } else {
+      // Fallback: relire l’URL si l’état est vide
+      this._initFromUrl();
+    }
+    this.render();
+  });
+}
+  
   // ==================== RENDU PRINCIPAL ====================
   render() {
     const app = document.getElementById('app');
