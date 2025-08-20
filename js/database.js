@@ -98,10 +98,12 @@ export class Database {
   }
 
   // ==================== EMPLOYÉS ====================
-  getEmployees() { return this.data.employees.slice(); }
-  getEmployee(id) { return this.data.employees.find(e => e.id === id) || null; }
-  addEmployee({ id, name, phone, email, notes, active = true }) {
-  // 1) ID manquant ? on en crée un simple (EMP###) en secours
+getEmployees() { return this.data.employees.slice(); }
+
+getEmployee(id) { return this.data.employees.find(e => e.id === id) || null; }
+
+addEmployee({ id, name, phone, email, notes, active = true }) {
+  // Si ID manquant → EMP###
   if (!id) {
     const nums = (this.data.employees || [])
       .map(e => parseInt(String(e.id || '').replace(/\D/g, ''), 10))
@@ -110,10 +112,9 @@ export class Database {
     id = 'EMP' + String(next).padStart(3, '0');
   }
 
-  // 2) Empêche les doublons → renvoie false (le bouton montre alors l’erreur)
+  // Empêche les doublons
   if (this.getEmployee(id)) return false;
 
-  // 3) Enregistre en respectant le statut "actif" choisi dans le formulaire
   const toSave = {
     id,
     name:  name  || id,
@@ -123,7 +124,14 @@ export class Database {
     active: !!active,
     createdAt: new Date().toISOString(),
   };
-  updateEmployee(id, fields = {}) {
+
+  if (!this.data.employees) this.data.employees = [];
+  this.data.employees.push(toSave);
+  this.save();
+  return toSave;
+}
+
+updateEmployee(id, fields = {}) {
   const emp = this.getEmployee(id);
   if (!emp) return false;
   Object.assign(emp, fields);
@@ -131,26 +139,37 @@ export class Database {
   return emp;
 }
 
-  if (!this.data.employees) this.data.employees = [];
-  this.data.employees.push(toSave);
+setEmployeeActive(id, active = true) {
+  const emp = this.getEmployee(id);
+  if (!emp) return false;
+  emp.active = !!active;
   this.save();
-  return toSave; // renvoie l'objet créé
+  return true;
 }
 
-  // Calcul du solde d’un employé (articles en possession)
-  getEmployeeBalance(employeeId) {
-    const map = new Map(); // key: name|size -> { name, size, quantity, price }
-    for (const tx of this.data.transactions.filter(t => t.employeeId === employeeId)) {
-      const sign = (tx.type === 'retour') ? -1 : 1; // attribution/ajout = +, retour = -
-      for (const it of tx.items) {
-        const key = `${it.name}|${it.size}`;
-        const obj = map.get(key) || { name: it.name, size: it.size, quantity: 0, price: it.price || 0 };
-        obj.quantity += sign * (it.quantity || 0);
-        map.set(key, obj);
-      }
+toggleEmployeeActive(id) {
+  const emp = this.getEmployee(id);
+  if (!emp) return false;
+  emp.active = !emp.active;
+  this.save();
+  return emp.active;
+}
+
+// Calcul du solde d’un employé (articles en possession)
+getEmployeeBalance(employeeId) {
+  const map = new Map(); // key: name|size -> { name, size, quantity, price }
+  for (const tx of this.data.transactions.filter(t => t.employeeId === employeeId)) {
+    const sign = (tx.type === 'retour') ? -1 : 1; // attribution/ajout = +, retour = -
+    for (const it of tx.items) {
+      const key = `${it.name}|${it.size}`;
+      const obj = map.get(key) || { name: it.name, size: it.size, quantity: 0, price: it.price || 0 };
+      obj.quantity += sign * (it.quantity || 0);
+      map.set(key, obj);
     }
-    return Array.from(map.values()).filter(o => o.quantity > 0);
   }
+  return Array.from(map.values()).filter(o => o.quantity > 0);
+}
+
 
   // ==================== INVENTAIRE ====================
   getInventory() { return this.data.inventory.slice(); }
@@ -306,28 +325,22 @@ toggleEmployeeActive(id) {
     for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
     return out;
   }
-  // --- AJOUT : stocker la signature base64 sur le "link" et la transaction liée ---
-export function setLinkSignature(token, dataUrl) {
-  if (!window.__db) window.__db = {};
-  const db = window.__db;
 
-  if (!db.links) db.links = {};
-  if (!db.links[token]) db.links[token] = {};
-
-  db.links[token].signature = dataUrl;
-
-  // Optionnel : si ton link a un mapping vers une transactionId
-  const txId = db.links[token].transactionId;
-  if (txId && db.transactions && db.transactions[txId]) {
-    db.transactions[txId].signature = dataUrl;
-  }
+// Dans class Database { ... }
+setLinkSignature(token, dataUrl) {
+  const link = this.data.links?.find(l => l.token === token);
+  if (!link) return false;
+  link.signature = dataUrl;
+  // si le lien pointe vers une transaction, on copie aussi dessus
+  const tx = this.data.transactions?.find(t => t.id === link.transactionId);
+  if (tx) tx.signature = dataUrl;
+  this.save();
+  return true;
 }
 
-// --- AJOUT : récupérer la signature si déjà enregistrée localement ---
-export function getLinkSignature(token) {
-  const db = window.__db || {};
-  const link = db.links?.[token];
+getLinkSignature(token) {
+  const link = this.data.links?.find(l => l.token === token);
   return link?.signature || null;
 }
-
+  
 }
